@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
-const TemperatureSchema = new mongoose.Schema({
-  // temp_id: {
+const VoltageSchema = new mongoose.Schema({
+  // cell_id: {
   //     type: String,
   //     required: true,
   //     unique: true,
@@ -24,10 +24,10 @@ const TemperatureSchema = new mongoose.Schema({
       },
     ],
   },
-  temp_name: {
+  cell_name: {
     type: String,
     required: true,
   },
 });
 
-module.exports = mongoose.model("TemperatureSchema", TemperatureSchema);
+module.exports = mongoose.model("VoltageSchema", VoltageSchema);
