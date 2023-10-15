@@ -141,7 +141,7 @@ exports.session_bms_data_controller = (req, res, next) => {
               // update voltage data with new values
               voltage_data.forEach((batterypack_voltage) => {
                 const data = batterypack_voltage.data;
-                const timestamp = batterypack_voltage.timeStamp;
+                const timestamp = batterypack_voltage.timestamp;
                 data.forEach((cell_volt, index) => {
                   // console.log(`cell volt ${cell_volt}`);
                   // console.log(`volt_id: ${voltage_ref[index].cell_id}`);
@@ -176,7 +176,7 @@ exports.session_bms_data_controller = (req, res, next) => {
 
               temp_data.forEach((batterypack_temp) => {
                 const data = batterypack_temp.data;
-                const timestamp = batterypack_temp.timeStamp;
+                const timestamp = batterypack_temp.timestamp;
 
                 data.forEach((cell_temp, index) => {
                   // console.log(`Temp_id ${temperature_ref[index].temp_id}`);
@@ -392,6 +392,7 @@ exports.getSessionDataController = (req, res) => {
       })
       .catch((err) => {
         console.log(err);
+        throw err;
       });
   }
 
@@ -407,6 +408,7 @@ exports.getSessionDataController = (req, res) => {
     })
     .catch((err) => {
       console.error("Error:", err);
+      res.send({});
     });
 };
 
