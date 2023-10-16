@@ -2,10 +2,13 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const bms_data_contoller = require("./controllers/data_controllers.js");
 const mongoose = require("mongoose");
+const cors = require('cors');
 const app = express();
 const port = 3000;
 const dbUrl =
   "mongodb+srv://celldoc24:8FRDnVp4p8iFJdAn@clustercelldoc.rth33nb.mongodb.net/?retryWrites=true&w=majority";
+
+app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 // Parse JSON requests
 app.use(bodyParser.json());
