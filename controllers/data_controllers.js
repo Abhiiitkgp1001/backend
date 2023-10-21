@@ -141,14 +141,20 @@ exports.session_bms_data_controller = (req, res, next) => {
               // update voltage data with new values
               voltage_data.forEach((batterypack_voltage) => {
                 const data = batterypack_voltage.data;
-                const timestamp = batterypack_voltage.timeStamp;
+                const timestamp = batterypack_voltage.timestamp;
+                // console.log("keys: ", Object.keys(voltage_update_operations));
                 data.forEach((cell_volt, index) => {
+                  // console.log(index);
                   // console.log(`cell volt ${cell_volt}`);
-                  // console.log(`volt_id: ${voltage_ref[index].cell_id}`);
+                  // console.log(`volt_id: ${voltage_ref[index]}`);
+
                   if (
-                    voltage_ref[index].cell_id in
-                    Object.keys(voltage_update_operations)
+                    Object.keys(voltage_update_operations).includes(
+                      `${voltage_ref[index]}`
+                    )
                   ) {
+                    // console.log(`voltage ref  presnt `);
+                    // console.log("new cell data");
                     voltage_update_operations[voltage_ref[index]].bms_id =
                       bms.bms_id;
                     voltage_update_operations[
@@ -158,6 +164,7 @@ exports.session_bms_data_controller = (req, res, next) => {
                       value: cell_volt,
                     });
                   } else {
+                    // console.log(`voltage ref not presnt `);
                     voltage_update_operations[voltage_ref[index]] = {
                       bms_id: bms.bms_id,
                       new_cell_data: [
@@ -170,19 +177,23 @@ exports.session_bms_data_controller = (req, res, next) => {
                   }
                 });
               });
+              // console.log(
+              //   voltage_update_operations[voltage_ref[0]].new_cell_data
+              // );
               //========================================================================================================
               // ========================================Temperature Update Operations =================================
               //========================================================================================================
 
               temp_data.forEach((batterypack_temp) => {
                 const data = batterypack_temp.data;
-                const timestamp = batterypack_temp.timeStamp;
+                const timestamp = batterypack_temp.timestamp;
 
                 data.forEach((cell_temp, index) => {
                   // console.log(`Temp_id ${temperature_ref[index].temp_id}`);
                   if (
-                    temperature_ref[index] in
-                    Object.keys(temperature_update_operations)
+                    Object.keys(temperature_update_operations).includes(
+                      `${temperature_ref[index]}`
+                    )
                   ) {
                     temperature_update_operations[
                       temperature_ref[index]
@@ -214,7 +225,11 @@ exports.session_bms_data_controller = (req, res, next) => {
               current_data.forEach((current) => {
                 const cells_current_data = current.data;
                 const timestamp_data_point = current.timestamp;
-                if (current_ref[0] in Object.keys(current_update_operations)) {
+                if (
+                  Object.keys(current_update_operations).includes(
+                    `${current_ref[0]}`
+                  )
+                ) {
                   current_update_operations[current_ref[0]].bms_id = bms.bms_id;
                   current_update_operations[current_ref[0]].new_cell_data.push({
                     timeStamp: timestamp_data_point,
@@ -251,6 +266,10 @@ exports.session_bms_data_controller = (req, res, next) => {
                   new_cell_data: voltage_update_operations[key].new_cell_data,
                 });
               });
+              // console.log(
+              //   "voltage in each ref",
+              //   voltage_update_records[0].new_cell_data
+              // );
               // voltage update records
               // console.log(
               //   `Update Voltages ${Object.keys(voltage_update_operations)}`
@@ -261,7 +280,7 @@ exports.session_bms_data_controller = (req, res, next) => {
                   updateOne: {
                     filter: { bms_id: record.bms_id, _id: record.cell_id },
                     update: {
-                      $push: { data: { $each: record.new_cell_data } },
+                      $push: { data: { $each: [...record.new_cell_data] } },
                     },
                   },
                 })
@@ -299,7 +318,7 @@ exports.session_bms_data_controller = (req, res, next) => {
                   updateOne: {
                     filter: { bms_id: record.bms_id, _id: record.temp_id },
                     update: {
-                      $push: { data: { $each: record.new_cell_data } },
+                      $push: { data: { $each: [...record.new_cell_data] } },
                     },
                   },
                 })
@@ -329,14 +348,14 @@ exports.session_bms_data_controller = (req, res, next) => {
                   new_cell_data: current_update_operations[key].new_cell_data,
                 });
               });
-
+              // console.log(current_update_records[0].new_cell_data);
               // Create an array of update operations
               const updateCurrentOperations = current_update_records.map(
                 (record) => ({
                   updateOne: {
                     filter: { bms_id: record.bms_id, _id: record.cell_id },
                     update: {
-                      $push: { data: { $each: record.new_cell_data } },
+                      $push: { data: { $each: [...record.new_cell_data] } },
                     },
                   },
                 })
@@ -392,6 +411,7 @@ exports.getSessionDataController = (req, res) => {
       })
       .catch((err) => {
         console.log(err);
+        throw err;
       });
   }
 
@@ -407,6 +427,7 @@ exports.getSessionDataController = (req, res) => {
     })
     .catch((err) => {
       console.error("Error:", err);
+      res.send({});
     });
 };
 
