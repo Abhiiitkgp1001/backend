@@ -130,7 +130,7 @@ exports.session_bms_data_controller = (req, res, next) => {
   //get data from body
   console.log(req.body);
   const session_id = req.body.session_id;
-  const no_of_bms = req.body.no_of_bms;
+  // const no_of_bms = req.body.no_of_bms;
   const session_name = req.body.session_name;
   const start_time = req.body.start_time;
   const end_time = req.body.end_time;
@@ -409,6 +409,18 @@ exports.session_bms_data_controller = (req, res, next) => {
               console.log(err);
             });
         });
+        session_object
+          .updateOne({
+            end_time: end_time,
+          })
+          .then((updatedSession) => {
+            console.log(`Updated Session ${updatedSession}`);
+          })
+          .catch((err) => {
+            console.log(err);
+            res.send(err.message);
+          });
+
         res.send("done");
       } else {
         console.log("Session object not found");
