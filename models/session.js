@@ -1,11 +1,10 @@
 const mongoose = require("mongoose");
 
 const SessionSchema = new mongoose.Schema({
-  // session_id: {
-  //     type: String,
-  //     required: true,
-  //     unique: true,
-  // },
+  device_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "DeviceSchema",
+  },
   no_of_bms: {
     type: Number,
     required: true,

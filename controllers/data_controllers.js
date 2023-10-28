@@ -3,6 +3,7 @@ const Current = require("../models/current.js");
 const Voltage = require("../models/voltage");
 const Temperature = require("../models/temperature.js");
 const Session = require("../models/session.js");
+const Device = require("../models/device.js");
 const { v4: uuidv4 } = require("uuid");
 const mongoose = require("mongoose");
 
@@ -13,90 +14,116 @@ exports.create_session_controller = (req, res) => {
   const no_of_temp = req.body.no_of_temp;
   const start_time = req.body.start_time;
   const session_name = req.body.session_name;
+  const device_unique_id = req.body.device_unique_id;
+  const device_name = req.body.device_name;
 
   const bms_ids = [];
-  // create new session
-  const session = new Session({
-    no_of_bms: no_of_bms,
-    bms: [],
-    session_name: session_name,
-    start_time: start_time,
-    end_time: start_time,
-  });
-
-  for (let i = 0; i < no_of_bms; i++) {
-    let bms = new BMS({
-      bms_name: bms_names[i],
-      voltage: [],
-      current: [],
-      temp: [],
-    });
-    bms_ids.push(bms._id);
-    session.bms.push(bms._id);
-
-    // create new object for each cell
-    for (let j = 0; j < no_of_cells[i]; j++) {
-      let cell = new Voltage({
-        cell_name: "V_" + (j + 1),
-        data: [],
-        bms_id: bms._id,
-      });
-      bms.voltage.push(cell._id);
-      cell
-        .save()
-        .then((saved_document) => {
-          console.log(`Saved document cell ${j} ${saved_document}`);
-        })
-        .catch((err) => [console.log(err)]);
-    }
-
-    // create new object for each temperature
-    for (let j = 0; j < no_of_temp[i]; j++) {
-      let temp = new Temperature({
-        temp_name: "T_" + (j + 1),
-        data: [],
-        bms_id: bms._id,
-      });
-      bms.temp.push(temp._id);
-      temp
-        .save()
-        .then((saved_document) => {
-          console.log(`Saved document temp${j} ${saved_document}`);
-        })
-        .catch((err) => [console.log(err)]);
-    }
-
-    // create record for current
-    let current = new Current({
-      bms_id: bms._id,
-      data: [],
-      current_name: "C_1",
-    });
-    bms.current.push(current._id);
-    current
-      .save()
-      .then((saved_document) => {
-        console.log(`Saved document ${saved_document}`);
-      })
-      .catch((err) => [console.log(err)]);
-
-    bms
-      .save()
-      .then((saved_document) => {
-        console.log(`Saved document ${saved_document}`);
-      })
-      .catch((err) => [console.log(err)]);
-  }
-  session
-    .save()
-    .then((saved_document) => {
-      console.log(`Saved document ${saved_document}`);
+  Device.findOne({ device_unique_id: device_unique_id })
+    .then((device) => {
+      if (!device) {
+        device = new Device({
+          device_unique_id: device_unique_id,
+          device_name: device_name,
+          sessions: [],
+        });
+        console.log("Device", device);
+      }
+      console.log("Device", device);
+      return device;
     })
-    .catch((err) => [console.log(err)]);
-  res.send({
-    session_id: session._id,
-    bms_ids: bms_ids,
-  });
+    .then((resDevice) => {
+      // create new session
+      const session = new Session({
+        no_of_bms: no_of_bms,
+        bms: [],
+        session_name: session_name,
+        start_time: start_time,
+        end_time: start_time,
+        device_id: resDevice._id,
+      });
+      resDevice.sessions.push(session._id); // push session id here
+
+      for (let i = 0; i < no_of_bms; i++) {
+        let bms = new BMS({
+          bms_name: bms_names[i],
+          voltage: [],
+          current: [],
+          temp: [],
+        });
+        bms_ids.push(bms._id);
+        session.bms.push(bms._id);
+
+        // create new object for each cell
+        for (let j = 0; j < no_of_cells[i]; j++) {
+          let cell = new Voltage({
+            cell_name: "V_" + (j + 1),
+            data: [],
+            bms_id: bms._id,
+          });
+          bms.voltage.push(cell._id);
+          cell
+            .save()
+            .then((saved_document) => {
+              console.log(`Saved document cell ${j} ${saved_document}`);
+            })
+            .catch((err) => [console.log(err)]);
+        }
+
+        // create new object for each temperature
+        for (let j = 0; j < no_of_temp[i]; j++) {
+          let temp = new Temperature({
+            temp_name: "T_" + (j + 1),
+            data: [],
+            bms_id: bms._id,
+          });
+          bms.temp.push(temp._id);
+          temp
+            .save()
+            .then((saved_document) => {
+              console.log(`Saved document temp${j} ${saved_document}`);
+            })
+            .catch((err) => [console.log(err)]);
+        }
+
+        // create record for current
+        let current = new Current({
+          bms_id: bms._id,
+          data: [],
+          current_name: "C_1",
+        });
+        bms.current.push(current._id);
+        current
+          .save()
+          .then((saved_document) => {
+            console.log(`Saved document ${saved_document}`);
+          })
+          .catch((err) => [console.log(err)]);
+
+        bms
+          .save()
+          .then((saved_document) => {
+            console.log(`Saved document ${saved_document}`);
+          })
+          .catch((err) => [console.log(err)]);
+      }
+      session
+        .save()
+        .then((saved_document) => {
+          console.log(`Saved document ${saved_document}`);
+        })
+        .catch((err) => [console.log(err)]);
+      resDevice
+        .save()
+        .then((saved_document) => {
+          console.log(`Saved document ${saved_document}`);
+        })
+        .catch((err) => [console.log(err)]);
+      res.send({
+        session_id: session._id,
+        bms_ids: bms_ids,
+      });
+    })
+    .catch((err) => console.log(err));
 };
 
 exports.session_bms_data_controller = (req, res, next) => {
@@ -441,6 +468,36 @@ exports.getSessionsController = (req, res, next) => {
     })
     .catch((err) => {
       console.log(err);
+    });
+};
+
+exports.getAllDevicesController = (req, res, next) => {
+  Device.find()
+    .select("_id device_name device_unique_id")
+    .exec()
+    .then((devices) => {
+      console.log(devices);
+      res.send(devices);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.send([]);
+    });
+};
+
+exports.getDeviceSessionsController = (req, res, next) => {
+  const device_id = req.params.device_id;
+  console.log("device_id: " + device_id);
+  Device.findOne({ device_unique_id: device_id })
+    .select("_id device_name device_unique_id sessions")
+    .populate("sessions", "_id device_id session_name start_time end_time")
+    .exec()
+    .then((sessions) => {
+      res.send(sessions);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.send([]);
     });
 };
 // populate: [

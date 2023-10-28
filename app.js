@@ -19,6 +19,10 @@ app.get("/data/get_all_sessions", bms_data_contoller.getSessionsController);
 
 app.get("/data/get_session_data", bms_data_contoller.getSessionDataController);
 
+app.get("/data/get_all_devices", bms_data_contoller.getAllDevicesController);
+
+app.get("/data/get_device_all_sessions/:device_id", bms_data_contoller.getDeviceSessionsController);
+
 // post route for data sendings
 app.post(
   "/data/session_bms_data",
