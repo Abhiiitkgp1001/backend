@@ -4,7 +4,6 @@ const Voltage = require("../models/voltage");
 const Temperature = require("../models/temperature.js");
 const Session = require("../models/session.js");
 const Device = require("../models/device.js");
-const { v4: uuidv4 } = require("uuid");
 const mongoose = require("mongoose");
 
 exports.create_session_controller = (req, res) => {
@@ -121,6 +120,7 @@ exports.create_session_controller = (req, res) => {
       res.send({
         session_id: session._id,
         bms_ids: bms_ids,
+        device_id: resDevice._id,
       });
     })
     .catch((err) => console.log(err));
