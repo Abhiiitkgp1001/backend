@@ -4,7 +4,6 @@ const Voltage = require("../models/voltage");
 const Temperature = require("../models/temperature.js");
 const Session = require("../models/session.js");
 const Device = require("../models/device.js");
-const { v4: uuidv4 } = require("uuid");
 const mongoose = require("mongoose");
 
 exports.create_session_controller = (req, res) => {
@@ -121,6 +120,7 @@ exports.create_session_controller = (req, res) => {
       res.send({
         session_id: session._id,
         bms_ids: bms_ids,
+        device_id: resDevice._id,
       });
     })
     .catch((err) => console.log(err));
@@ -130,7 +130,7 @@ exports.session_bms_data_controller = (req, res, next) => {
   //get data from body
   console.log(req.body);
   const session_id = req.body.session_id;
-  const no_of_bms = req.body.no_of_bms;
+  // const no_of_bms = req.body.no_of_bms;
   const session_name = req.body.session_name;
   const start_time = req.body.start_time;
   const end_time = req.body.end_time;
@@ -409,6 +409,18 @@ exports.session_bms_data_controller = (req, res, next) => {
               console.log(err);
             });
         });
+        session_object
+          .updateOne({
+            end_time: end_time,
+          })
+          .then((updatedSession) => {
+            console.log(`Updated Session ${updatedSession}`);
+          })
+          .catch((err) => {
+            console.log(err);
+            res.send(err.message);
+          });
+
         res.send("done");
       } else {
         console.log("Session object not found");
