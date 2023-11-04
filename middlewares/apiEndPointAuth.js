@@ -1,7 +1,8 @@
 const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
-  const token = req.get("Authorization").split(" ")[1];
+  const token = req.get("x-auth-token");
+  //   console.log(token);
   let decodedToken;
   try {
     decodedToken = jwt.verify(token, "supersecret");
@@ -10,10 +11,9 @@ module.exports = (req, res, next) => {
     throw err;
   }
   if (!decodedToken) {
-    const error = new Error("User not authenticated");
+    const error = new Error("Api EndPoint Error");
     error.statusCode = 401;
     throw error;
   }
-  req.userId = decodedToken.userId;
   next();
 };

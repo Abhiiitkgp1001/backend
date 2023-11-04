@@ -179,9 +179,9 @@ exports.postForgotPassword = (req, res, next) => {
       // Generate a unique reset token
       Otp = generateOTP();
       //   set otp to cache
+      console.log(Otp);
       return redisClient.set(
-        req.body.email,
-        "_" + "forgot_password",
+        req.body.email + "_" + "forgot_password",
         Otp,
         "EX",
         60
@@ -225,10 +225,12 @@ exports.postResetPassword = (req, res, next) => {
     err.data = errors.array();
     throw err;
   }
+  console.log("email: ", req.body.email);
   let loadedUser;
   redisClient
-    .get(req.body.email)
+    .get(req.body.email + "_" + "forgot_password")
     .then((otp) => {
+      console.log(otp);
       if (!otp) {
         // res.status(403).json({ message: "Otp No longer valid" });
         const error = new Error("Otp No longer valid");
@@ -236,6 +238,7 @@ exports.postResetPassword = (req, res, next) => {
         throw error;
       } else if (otp !== req.body.otp) {
         //   res.status(400).json({ message: "Otp did not match" });
+        console.log(req.body.otp);
         const error = new Error("Otp did not match");
         error.statusCode = 400;
         throw error;
@@ -252,7 +255,7 @@ exports.postResetPassword = (req, res, next) => {
         throw error;
       }
       loadedUser = user;
-      return bcrypt.hash(req.body.password);
+      return bcrypt.hash(req.body.password, 12);
     })
     .then((hashedPass) => {
       loadedUser.password = hashedPass;
@@ -263,6 +266,7 @@ exports.postResetPassword = (req, res, next) => {
       res.status(200).json({ message: "Password changed successfully" });
     })
     .catch((err) => {
+      console.log(`Error: ${err}`);
       if (!err.statusCode) {
         err.statusCode = 500;
       }
@@ -279,8 +283,21 @@ exports.postChangePassword = (req, res, next) => {
     throw err;
   }
   let loadedUser;
-  // find user by id in req
-  User.findOne({ _id: req.userId })
+  redisClient
+    .get(req.body.email + "_" + req.body.type)
+    .then((otp) => {
+      if (!otp) {
+        const err = new Error("Otp no longer valid");
+        err.statusCode = 503;
+        throw err;
+      } else if (otp !== req.body.otp) {
+        const err = new Error("Otp not valid ");
+        err.statusCode = 400;
+        throw err;
+      }
+      // find user by id in req
+      return User.findOne({ _id: req.userId });
+    })
     .then((user) => {
       loadedUser = user;
       const old_password = req.body.old_password;
@@ -301,6 +318,35 @@ exports.postChangePassword = (req, res, next) => {
     .then((savedUser) => {
       console.log(`Password changed: ${savedUser}`);
       res.status(200).json({ message: "Password changed successfully" });
+    })
+    .catch((err) => {
+      if (!err.statusCode) {
+        err.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+exports.postGenerateOtp = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const err = new Error("Validation Error: ");
+    err.statusCode = 400;
+    err.data = errors.array();
+    throw err;
+  }
+  const email = req.body.email;
+  const type = req.body.type;
+  let otp = generateOTP();
+
+  redisClient
+    .set(email + "_" + type, otp, "EX", 60)
+    .then((result) => {
+      if (!result) {
+        const error = new Error("Otp Service Error: ");
+        error.statusCode = 503;
+        throw error;
+      }
     })
     .catch((err) => {
       if (!err.statusCode) {

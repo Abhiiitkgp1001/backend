@@ -4,6 +4,7 @@ const bms_data_contoller = require("./controllers/data_controllers.js");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const redisClient = require("./utils/redisClient");
+const apiAuth = require("./middlewares/apiEndPointAuth");
 
 const authRoutes = require("./routes/auth");
 
@@ -21,24 +22,42 @@ app.use(bodyParser.json());
 app.use("/auth", authRoutes);
 
 //fetch session data
-app.get("/data/get_all_sessions", bms_data_contoller.getSessionsController);
+app.get(
+  "/data/get_all_sessions",
+  apiAuth,
+  bms_data_contoller.getSessionsController
+);
 
-app.get("/data/get_session_data", bms_data_contoller.getSessionDataController);
+app.get(
+  "/data/get_session_data",
+  apiAuth,
+  bms_data_contoller.getSessionDataController
+);
 
-app.get("/data/get_all_devices", bms_data_contoller.getAllDevicesController);
+app.get(
+  "/data/get_all_devices",
+  apiAuth,
+  bms_data_contoller.getAllDevicesController
+);
 
 app.get(
   "/data/get_device_all_sessions/:device_id",
+  apiAuth,
   bms_data_contoller.getDeviceSessionsController
 );
 
 // post route for data sendings
 app.post(
   "/data/session_bms_data",
+  apiAuth,
   bms_data_contoller.session_bms_data_controller
 );
 
-app.post("/data/create_session", bms_data_contoller.create_session_controller);
+app.post(
+  "/data/create_session",
+  apiAuth,
+  bms_data_contoller.create_session_controller
+);
 
 // app error handler middleware
 app.use((error, req, res, next) => {

@@ -3,9 +3,12 @@ const User = require("../models/user");
 const { body } = require("express-validator");
 const authController = require("../controllers/auth");
 const router = express.Router();
+const isAuth = require("../middlewares/auth");
+const apiAuth = require("../middlewares/apiEndPointAuth");
 
 router.post(
   "/signup-initiate",
+  apiAuth,
   [
     body("phone_number", "Please enter your phone number")
       .trim()
@@ -17,6 +20,7 @@ router.post(
 
 router.post(
   "/signup",
+  apiAuth,
   [
     body("phone_number", "Please enter your phone number")
       .trim()
@@ -60,6 +64,7 @@ router.post(
 
 router.post(
   "/signin",
+  apiAuth,
   [
     // Use built-in isEmail and isMobilePhone validators
     // Use built-in isEmail and isMobilePhone validators
@@ -103,13 +108,16 @@ router.post(
 
 router.post(
   "/forgot_password",
+  apiAuth,
   [body("email", "please enter valid email").isEmail()],
   authController.postForgotPassword
 );
 
 router.post(
   "/reset_password",
+  apiAuth,
   [
+    body("email", "Please enter your email").trim().isEmail(),
     body("password", "please enter new password")
       .trim()
       .notEmpty()
@@ -121,9 +129,13 @@ router.post(
       .isLength({ min: 8, max: 16 })
       .isAlphanumeric()
       .custom((val, { req }) => {
-        if (val !== req.body.new_password) {
-          return Promise.reject("Password shoul match");
+        // console.log(val);
+        // console.log(req.body.password);
+        if (val !== req.body.password) {
+          console.log("password do not match");
+          return Promise.reject("Password should match");
         }
+        return true;
       }),
   ],
   authController.postResetPassword
@@ -131,6 +143,7 @@ router.post(
 
 router.post(
   "/change_password",
+  isAuth,
   [
     body("old_password", "please enter old password")
       .trim()
@@ -154,6 +167,13 @@ router.post(
       }),
   ],
   authController.postChangePassword
+);
+
+router.post(
+  "/generate_otp",
+  apiAuth,
+  [body("email").trim().isEmail()],
+  authController.postGenerateOtp
 );
 
 module.exports = router;
