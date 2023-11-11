@@ -34,13 +34,27 @@ exports.postSignUpInitiate = (req, res, next) => {
       Otp = generateOTP();
       // set otp to cache for later verification
       console.log(Otp);
-      return redisClient.set(req.body.email + "_" + "signup", Otp, "EX", 60);
+      return redisClient.set(
+        req.body.email + req.body.type + "_" + req.body.message_id,
+        Otp,
+        "EX",
+        60
+      );
     })
     .then((res) => {
-      return mailer.sendSignUpOtp(req.body.email, Otp);
-    })
-    .then((info) => {
-      console.log("Mail sent for Otp: " + info.messageId);
+      if (!res) {
+        const error = new Error("Otp service error");
+        error.statusCode = 503;
+        throw error;
+      }
+      mailer
+        .sendSignUpOtp(req.body.email, Otp)
+        .then((info) => {
+          console.log("Mail sent for Otp: " + info.messageId);
+        })
+        .catch((err) => {
+          console.log(`Error Sending Mail: ${err.message}`);
+        });
       res.status(200).json({ message: "Otp has been sent to your Email" });
     })
     .catch((err) => {
@@ -67,7 +81,7 @@ exports.postSignup = (req, res, next) => {
 
   let hashpass;
   redisClient
-    .get(req.body.email + "_" + "signup")
+    .get(req.body.email + req.body.type + "_" + req.body.message_id)
     .then((otp) => {
       if (!otp) {
         // res.status(403).json({ message: "Otp No longer valid" });
@@ -181,7 +195,7 @@ exports.postForgotPassword = (req, res, next) => {
       //   set otp to cache
       console.log(Otp);
       return redisClient.set(
-        req.body.email + "_" + "forgot_password",
+        req.body.email + "_" + "forgot_password" + "_" + req.body.message_id,
         Otp,
         "EX",
         60
@@ -193,15 +207,20 @@ exports.postForgotPassword = (req, res, next) => {
         error.statusCode = 503;
         throw error;
       }
-      return mailer.sendResetPasswordOtp(loadedUser.email, Otp);
-    })
-    .then((mailInfo) => {
-      if (!mailInfo) {
-        //   res.status(404).json({ message: "mail could not be sent" });
-        const error = new Error("Mail couldnt be sent To User Email Id");
-        error.statusCode = 503;
-        throw error;
-      }
+      mailer
+        .sendResetPasswordOtp(loadedUser.email, Otp)
+        .then((mailInfo) => {
+          if (!mailInfo) {
+            //   res.status(404).json({ message: "mail could not be sent" });
+            const error = new Error("Mail couldnt be sent To User Email Id");
+            error.statusCode = 503;
+            throw error;
+          }
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+
       res.status(200).json({
         message:
           "Password Reset Otp has been sent to your Registered email address",
@@ -228,7 +247,7 @@ exports.postResetPassword = (req, res, next) => {
   console.log("email: ", req.body.email);
   let loadedUser;
   redisClient
-    .get(req.body.email + "_" + "forgot_password")
+    .get(req.body.email + "_" + "forgot_password" + "_" + req.body.message_id)
     .then((otp) => {
       console.log(otp);
       if (!otp) {
@@ -284,7 +303,7 @@ exports.postChangePassword = (req, res, next) => {
   }
   let loadedUser;
   redisClient
-    .get(req.body.email + "_" + req.body.type)
+    .get(req.body.email + "_" + req.body.type + "_" + req.body.message_id)
     .then((otp) => {
       if (!otp) {
         const err = new Error("Otp no longer valid");
@@ -337,16 +356,30 @@ exports.postGenerateOtp = (req, res, next) => {
   }
   const email = req.body.email;
   const type = req.body.type;
+  const message_id = req.body.message_id;
   let otp = generateOTP();
 
   redisClient
-    .set(email + "_" + type, otp, "EX", 60)
+    .set(email + "_" + type + "_" + message_id, otp, "EX", 60)
     .then((result) => {
       if (!result) {
         const error = new Error("Otp Service Error: ");
         error.statusCode = 503;
         throw error;
       }
+    })
+    .catch((err) => {
+      if (!err.statusCode) {
+        err.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+exports.getAllUsers = (req, res, next) => {
+  User.find()
+    .then((users) => {
+      res.status(200).json({ users: users });
     })
     .catch((err) => {
       if (!err.statusCode) {

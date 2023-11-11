@@ -440,6 +440,7 @@ exports.getSessionDataController = (req, res) => {
   // Function to dynamically populate references
   async function populateReferences(doc) {
     // Use Mongoose's populate method for subdocuments
+    console.log(doc);
     return doc
       .populate({
         path: "bms",
@@ -457,10 +458,13 @@ exports.getSessionDataController = (req, res) => {
   Session.findById(sessionId)
     .exec()
     .then((session) => {
+      if (!session) {
+        return {};
+      }
       return populateReferences(session);
     })
     .then((populatedSession) => {
-      console.log(populatedSession.bms[0].voltage[0]);
+      // console.log(populatedSession.bms[0].voltage[0]);
 
       res.send(populatedSession);
     })

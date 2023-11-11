@@ -143,6 +143,7 @@ router.post(
 
 router.post(
   "/change_password",
+  apiAuth,
   isAuth,
   [
     body("old_password", "please enter old password")
@@ -175,5 +176,7 @@ router.post(
   [body("email").trim().isEmail()],
   authController.postGenerateOtp
 );
+
+router.get("/all_users", apiAuth, authController.getAllUsers);
 
 module.exports = router;
