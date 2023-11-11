@@ -163,7 +163,7 @@ router.post(
       .isAlphanumeric()
       .custom((val, { req }) => {
         if (val !== req.body.new_password) {
-          return Promise.reject("Password shoul match");
+          return Promise.reject("Password should match");
         }
       }),
   ],
