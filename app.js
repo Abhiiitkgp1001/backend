@@ -9,7 +9,7 @@ const apiAuth = require("./middlewares/apiEndPointAuth");
 const authRoutes = require("./routes/auth");
 
 const app = express();
-const port = 8000;
+const port = 80;
 const dbUrl =
   "mongodb+srv://celldoc24:8FRDnVp4p8iFJdAn@clustercelldoc.rth33nb.mongodb.net/?retryWrites=true&w=majority";
 

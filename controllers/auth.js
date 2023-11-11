@@ -41,8 +41,8 @@ exports.postSignUpInitiate = (req, res, next) => {
         60
       );
     })
-    .then((res) => {
-      if (!res) {
+    .then((result) => {
+      if (!result) {
         const error = new Error("Otp service error");
         error.statusCode = 503;
         throw error;
