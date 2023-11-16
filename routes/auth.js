@@ -177,6 +177,12 @@ router.post(
   authController.postGenerateOtp
 );
 
+router.post("/validate_otp", apiAuth, authController.postValidateOtp);
+
+router.get("/get_user", apiAuth, isAuth, authController.getUser);
+
+router.post("/verify_token", apiAuth, isAuth, authController.postVerifyToken);
+
 router.get("/all_users", apiAuth, authController.getAllUsers);
 
 module.exports = router;
