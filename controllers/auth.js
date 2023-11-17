@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const mailer = require("../utils/sendEmail");
 const crypto = require("crypto");
 const redisClient = require("../utils/redisClient");
+const UserDto = require("../dtos/user.dto");
 
 function generateOTP() {
   // Generate a random number between 100000 and 999999 (inclusive)
@@ -35,7 +36,7 @@ exports.postSignUpInitiate = (req, res, next) => {
       // set otp to cache for later verification
       console.log(Otp);
       return redisClient.set(
-        req.body.email + req.body.type + "_" + req.body.message_id,
+        req.body.email + req.body.type + "_" + req.body.machine_id,
         Otp,
         "EX",
         60
@@ -81,7 +82,7 @@ exports.postSignup = (req, res, next) => {
 
   let hashpass;
   redisClient
-    .get(req.body.email + req.body.type + "_" + req.body.message_id)
+    .get(req.body.email + req.body.type + "_" + req.body.machine_id)
     .then((otp) => {
       if (!otp) {
         // res.status(403).json({ message: "Otp No longer valid" });
@@ -195,7 +196,7 @@ exports.postForgotPassword = (req, res, next) => {
       //   set otp to cache
       console.log(Otp);
       return redisClient.set(
-        req.body.email + "_" + "forgot_password" + "_" + req.body.message_id,
+        req.body.email + "_" + request.body.type + "_" + req.body.machine_id,
         Otp,
         "EX",
         60
@@ -247,7 +248,7 @@ exports.postResetPassword = (req, res, next) => {
   console.log("email: ", req.body.email);
   let loadedUser;
   redisClient
-    .get(req.body.email + "_" + "forgot_password" + "_" + req.body.message_id)
+    .get(req.body.email + "_" + req.body.type + "_" + req.body.machine_id)
     .then((otp) => {
       console.log(otp);
       if (!otp) {
@@ -303,7 +304,7 @@ exports.postChangePassword = (req, res, next) => {
   }
   let loadedUser;
   redisClient
-    .get(req.body.email + "_" + req.body.type + "_" + req.body.message_id)
+    .get(req.body.email + "_" + req.body.type + "_" + req.body.machine_id)
     .then((otp) => {
       if (!otp) {
         const err = new Error("Otp no longer valid");
@@ -356,23 +357,97 @@ exports.postGenerateOtp = (req, res, next) => {
   }
   const email = req.body.email;
   const type = req.body.type;
-  const message_id = req.body.message_id;
+  const machine_id = req.body.machine_id;
   let otp = generateOTP();
 
   redisClient
-    .set(email + "_" + type + "_" + message_id, otp, "EX", 60)
+    .set(email + "_" + type + "_" + machine_id, otp, "EX", 60)
     .then((result) => {
       if (!result) {
         const error = new Error("Otp Service Error: ");
         error.statusCode = 503;
         throw error;
       }
+      mailer
+        .sendSignUpOtp(req.body.email, Otp)
+        .then((info) => {
+          console.log("Mail sent for Otp: " + info.messageId);
+        })
+        .catch((err) => {
+          console.log(`Error Sending Mail: ${err.message}`);
+        });
+      res.status(200).json({ message: "Otp has been sent to your Email" });
     })
     .catch((err) => {
       if (!err.statusCode) {
         err.statusCode = 500;
       }
       next(err);
+    });
+};
+exports.postVerifyToken = (req, res, next) => {
+  let decodedToken;
+  try {
+    decodedToken = jwt.verify(token, "supersecret");
+  } catch (err) {
+    err.statusCode = 500;
+    next(err);
+  }
+  if (!decodedToken) {
+    const error = new Error("User not authenticated");
+    error.statusCode = 401;
+    next(error);
+  }
+  const userId = decodedToken.userId;
+  User.findOne({ _id: userId })
+    .then((user) => {
+      console.log(user);
+      user = UserDto.user(user);
+      res.status(200).json({
+        user: user,
+      });
+    })
+    .catch((err) => {
+      if (!err.statusCode) {
+        err.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+exports.getUser = (req, res) => {
+  User.findOne({ _id: req.UserId })
+    .then((user) => {
+      user = UserDto.user(user);
+      res.status(200).json({ user: user });
+    })
+    .catch((err) => {
+      if (!err.statusCode) {
+        err.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+exports.postValidateOtp = (req, res, next) => {
+  // req.body.otp;
+  redisClient
+    .get(req.body.email + "_" + req.body.type + "_" + req.body.machine_id)
+    .then((otp) => {
+      console.log(otp);
+      if (!otp) {
+        // res.status(403).json({ message: "Otp No longer valid" });
+        const error = new Error("Otp No longer valid");
+        error.statusCode = 403;
+        throw error;
+      } else if (otp !== req.body.otp) {
+        //   res.status(400).json({ message: "Otp did not match" });
+        console.log(req.body.otp);
+        const error = new Error("Otp did not match");
+        error.statusCode = 400;
+        throw error;
+      }
+      res.status(200).json({ message: "Otp Matched" });
     });
 };
 
