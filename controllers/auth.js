@@ -6,8 +6,7 @@ const jwt = require("jsonwebtoken");
 const mailer = require("../utils/sendEmail");
 const crypto = require("crypto");
 const redisClient = require("../utils/redisClient");
-const jwt = require("jsonwebtoken");
-const UserDto = require("dtos/user.dto");
+const UserDto = require("../dtos/user.dto");
 
 function generateOTP() {
   // Generate a random number between 100000 and 999999 (inclusive)
@@ -430,7 +429,7 @@ exports.getUser = (req, res) => {
     });
 };
 
-exports.validateOtp = (req, res, next) => {
+exports.postValidateOtp = (req, res, next) => {
   // req.body.otp;
   redisClient
     .get(req.body.email + "_" + req.body.type + "_" + req.body.machine_id)
