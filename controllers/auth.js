@@ -196,7 +196,7 @@ exports.postForgotPassword = (req, res, next) => {
       //   set otp to cache
       console.log(Otp);
       return redisClient.set(
-        req.body.email + "_" + request.body.type + "_" + req.body.machine_id,
+        req.body.email + "_" + req.body.type + "_" + req.body.machine_id,
         Otp,
         "EX",
         60
