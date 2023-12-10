@@ -503,7 +503,17 @@ exports.postCreatePilot = (req, res, next) => {
         err.statusCode = 400;
         throw err;
       }
-      return bcrypt.hash(password, 12);
+      // check if pilot allready exists
+      return User.findOne({ email: email });
+    })
+    .then((user) => {
+      if (!user) {
+        return bcrypt.hash(password, 12);
+      } else {
+        const err = new Error("User already exists");
+        err.statusCode = 400;
+        throw err;
+      }
     })
     .then((hash) => {
       hashPass = hash;
