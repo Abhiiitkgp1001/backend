@@ -22,6 +22,8 @@ exports.postSignUpInitiate = (req, res, next) => {
     err.data = errors.array();
     throw err;
   }
+
+  console.log(`${req.body.email}_${req.body.type}_${req.body.machine_id}`);
   let Otp;
   User.findOne({ email: req.body.email, phone_number: req.body.phone_number })
     .then((user) => {
@@ -36,13 +38,14 @@ exports.postSignUpInitiate = (req, res, next) => {
       // set otp to cache for later verification
       console.log(Otp);
       return redisClient.set(
-        req.body.email + req.body.type + "_" + req.body.machine_id,
+        req.body.email + "_" + req.body.type + "_" + req.body.machine_id,
         Otp,
         "EX",
         60
       );
     })
     .then((result) => {
+      console.log(result);
       if (!result) {
         const error = new Error("Otp service error");
         error.statusCode = 503;
@@ -74,6 +77,7 @@ exports.postSignup = (req, res, next) => {
     err.data = errors.array();
     throw err;
   }
+  console.log(`${req.body.email}_${req.body.type}_${req.body.machine_id}`);
 
   const email = req.body.email;
   const phone_number = req.body.phone_number;
@@ -82,8 +86,9 @@ exports.postSignup = (req, res, next) => {
 
   let hashpass;
   redisClient
-    .get(req.body.email + req.body.type + "_" + req.body.machine_id)
+    .get(req.body.email + "_" + req.body.type + "_" + req.body.machine_id)
     .then((otp) => {
+      console.log(otp);
       if (!otp) {
         // res.status(403).json({ message: "Otp No longer valid" });
         const error = new Error("Otp No longer valid");
@@ -115,6 +120,15 @@ exports.postSignup = (req, res, next) => {
     })
     .then((savedUser) => {
       console.log("User created successfully ", savedUser);
+      const token = jwt.sign(
+        {
+          email: savedUser.email,
+          userId: savedUser._id.toString(),
+          token: token,
+        },
+        "supersecret",
+        { expiresIn: "1h" }
+      );
       res.status(201).json({
         message: "User SignedUp successfully",
         user: savedUser,
@@ -388,7 +402,7 @@ exports.postGenerateOtp = (req, res, next) => {
 exports.postVerifyToken = (req, res, next) => {
   let decodedToken;
   try {
-    decodedToken = jwt.verify(token, "supersecret");
+    decodedToken = jwt.verify(req.body.token, "supersecret");
   } catch (err) {
     err.statusCode = 500;
     next(err);
@@ -455,6 +469,107 @@ exports.getAllUsers = (req, res, next) => {
   User.find()
     .then((users) => {
       res.status(200).json({ users: users });
+    })
+    .catch((err) => {
+      if (!err.statusCode) {
+        err.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+exports.postCreatePilot = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const err = new Error("Validation Failed");
+    err.statusCode = 409;
+    err.data = errors.array();
+    throw err;
+  }
+  const email = req.body.email;
+  const phone_number = req.body.phone_number;
+  const password = req.body.password;
+  const admin = req.body.admin;
+  let hashPass;
+  let loadedUser;
+  let pilot;
+  // check if user ssigned in is admin else it should not be able to create pilot
+  // get user by admin user id
+  User.findById(req.userId)
+    .then((user) => {
+      loadedUser = user;
+      if (!user.admin) {
+        const err = new Error("Not authorized");
+        err.statusCode = 400;
+        throw err;
+      }
+      // check if pilot allready exists
+      return User.findOne({ email: email });
+    })
+    .then((user) => {
+      if (!user) {
+        return bcrypt.hash(password, 12);
+      } else {
+        const err = new Error("User already exists");
+        err.statusCode = 400;
+        throw err;
+      }
+    })
+    .then((hash) => {
+      hashPass = hash;
+      const profile = new Profile();
+      return profile.save();
+    })
+    .then((profile) => {
+      const pilot = new User({
+        email: email,
+        phone_number: phone_number,
+        password: hashPass,
+        admin: admin,
+        profile: profile._id,
+        childUsers: null,
+      });
+      // Generate a unique reset token
+      return pilot.save();
+    })
+    .then((savedPilot) => {
+      pilot = savedPilot;
+      console.log("Pilot created successfully ", savedPilot);
+      loadedUser.childUsers.push(savedPilot._id);
+      return loadedUser.save();
+    })
+    .then((user) => {
+      res.status(201).json({
+        message: "Pilot Created successfully",
+        user: pilot,
+      });
+    })
+    .catch((err) => {
+      if (!err.statusCode) {
+        err.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+exports.getAllPilots = (req, res, next) => {
+  //   console.log("getAllPilots");
+  User.findById(req.userId)
+    .then((user) => {
+      if (!user.admin) {
+        const err = new Error("Not authorized");
+        err.statusCode = 400;
+        throw err;
+      }
+      return user.populate({
+        path: "childUsers",
+      });
+    })
+    .then((user_populated) => {
+      const allPilots = user_populated.childUsers;
+      res.status(200).json({
+        pilots: allPilots,
+      });
     })
     .catch((err) => {
       if (!err.statusCode) {

@@ -29,6 +29,14 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     required: true,
   },
+  childUsers: {
+    type: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "UserSchema",
+      },
+    ],
+  },
 });
 
 module.exports = mongoose.model("UserSchema", UserSchema);

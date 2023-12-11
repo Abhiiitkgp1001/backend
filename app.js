@@ -75,22 +75,22 @@ mongoose
       .connect()
       .then((connection) => {
         app.listen(port, () => {
-          // redisClient
-          //   .set("a", "1234")
-          //   .then((redisResult) => {
-          //     console.log(redisResult);
-          //   })
-          //   .catch((error) => {
-          //     console.log(`Redis Error: ${error}`);
-          //   });
-          // redisClient
-          //   .get("a")
-          //   .then((val) => {
-          //     console.log(val);
-          //   })
-          //   .catch((error) => {
-          //     console.log(error);
-          //   });
+          redisClient
+            .set("a", "1234")
+            .then((redisResult) => {
+              console.log(redisResult);
+            })
+            .catch((error) => {
+              console.log(`Redis Error: ${error}`);
+            });
+          redisClient
+            .get("a")
+            .then((val) => {
+              console.log(val);
+            })
+            .catch((error) => {
+              console.log(error);
+            });
 
           console.log(`Express app running on port ${port}!`);
         });
