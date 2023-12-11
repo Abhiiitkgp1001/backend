@@ -124,7 +124,6 @@ exports.postSignup = (req, res, next) => {
         {
           email: savedUser.email,
           userId: savedUser._id.toString(),
-          token: token,
         },
         "supersecret",
         { expiresIn: "1h" }
@@ -132,6 +131,7 @@ exports.postSignup = (req, res, next) => {
       res.status(201).json({
         message: "User SignedUp successfully",
         user: savedUser,
+        token: token,
       });
     })
     .catch((err) => {

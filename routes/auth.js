@@ -46,8 +46,7 @@ router.post(
     body("password")
       .trim()
       .notEmpty()
-      .isLength({ min: 8, max: 16 })
-      .isAlphanumeric(),
+      .isLength({ min: 8, max: 16 }),
     body("confirm_pass")
       .trim()
       .notEmpty()
