@@ -7,6 +7,7 @@ const redisClient = require("./utils/redisClient");
 const apiAuth = require("./middlewares/apiEndPointAuth");
 
 const authRoutes = require("./routes/auth");
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 const port = 80;
@@ -20,6 +21,7 @@ app.use(bodyParser.json());
 
 //set auth routes
 app.use("/auth", authRoutes);
+app.use("/admin", adminRoutes);
 
 //fetch session data
 app.get(
