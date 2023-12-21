@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
   const token = req.get("x-auth-token");
-  //   console.log(token);
+  // console.log(token);
   let decodedToken;
   try {
     decodedToken = jwt.verify(token, "supersecret");

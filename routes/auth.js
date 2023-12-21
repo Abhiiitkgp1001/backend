@@ -184,7 +184,7 @@ router.post("/validate_otp", apiAuth, authController.postValidateOtp);
 
 router.get("/get_user", apiAuth, isAuth, authController.getUser);
 
-router.post("/verify_token", apiAuth, isAuth, authController.postVerifyToken);
+router.post("/verify_token", apiAuth, authController.postVerifyToken);
 
 router.get("/all_users", apiAuth, authController.getAllUsers);
 
@@ -199,4 +199,8 @@ router.patch("/update_profile/:user_id",
   upload.single('profile_pic'),
   authController.update_profile
 );
+router.post("/create_pilot", apiAuth, isAuth, authController.postCreatePilot);
+
+router.get("/get_all_pilots", apiAuth, isAuth, authController.getAllPilots);
+
 module.exports = router;
