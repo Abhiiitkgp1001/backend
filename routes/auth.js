@@ -5,6 +5,9 @@ const authController = require("../controllers/auth");
 const router = express.Router();
 const isAuth = require("../middlewares/auth");
 const apiAuth = require("../middlewares/apiEndPointAuth");
+const auth_data_controller = require("../controllers/auth.js");
+const multer = require('multer');
+const upload = multer();
 
 router.post(
   "/signup-initiate",
@@ -185,4 +188,15 @@ router.post("/verify_token", apiAuth, isAuth, authController.postVerifyToken);
 
 router.get("/all_users", apiAuth, authController.getAllUsers);
 
+
+router.get("/get_profile/:user_id",
+  apiAuth, isAuth,
+  authController.get_profile
+);
+
+router.patch("/update_profile/:user_id",
+  apiAuth, isAuth,
+  upload.single('profile_pic'),
+  authController.update_profile
+);
 module.exports = router;
