@@ -43,11 +43,7 @@ router.post(
         });
       })
       .normalizeEmail(),
-    body("password")
-      .trim()
-      .notEmpty()
-      .isLength({ min: 8, max: 16 })
-      .isAlphanumeric(),
+    body("password").trim().notEmpty().isLength({ min: 8, max: 16 }),
     body("confirm_pass")
       .trim()
       .notEmpty()
@@ -185,8 +181,8 @@ router.post("/verify_token", apiAuth, authController.postVerifyToken);
 
 router.get("/all_users", apiAuth, authController.getAllUsers);
 
-router.post("/create_pilot", apiAuth, isAuth, authController.postCreatePilot);
+// router.post("/create_pilot", apiAuth, isAuth, authController.postCreatePilot);
 
-router.get("/get_all_pilots", apiAuth, isAuth, authController.getAllPilots);
+// router.get("/get_all_pilots", apiAuth, isAuth, authController.getAllPilots);
 
 module.exports = router;

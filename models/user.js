@@ -29,6 +29,10 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     required: true,
   },
+  accountLock: {
+    type: Boolean,
+    default: false,
+  },
   childUsers: {
     type: [
       {
