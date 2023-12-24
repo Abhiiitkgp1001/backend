@@ -78,7 +78,7 @@ exports.postCreatePilot = (req, res, next) => {
     })
     .then((hash) => {
       hashPass = hash;
-      const profile = new Profile();
+      const profile = new Profile({ email: email, phone_number: phone_number });
       return profile.save();
     })
     .then((profile) => {
@@ -119,12 +119,14 @@ exports.getAllPilots = (req, res, next) => {
     .then((user) => {
       return user.populate({
         path: "childUsers",
-        populate: [{ path: "profile" }],
+        populate: {
+          path: "profile", // Assuming 'profile' is a field in the 'User' model referencing the 'Profile' model
+        },
       });
     })
     .then((user_populated) => {
-      const allPilots = user_populated.childUsers;
-      allPilots = allPilots.filter((pilot) => pilot.archived);
+      let allPilots = user_populated.childUsers;
+      allPilots = allPilots.filter((pilot) => pilot.archived === false);
       res.status(200).json({
         pilots: allPilots,
       });

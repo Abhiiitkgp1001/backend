@@ -9,9 +9,11 @@ const ProfileSchema = new mongoose.Schema({
   },
   email: {
     type: String,
+    required: true,
   },
   phone_number: {
     type: String,
+    required: true,
   },
   aadhar_id: {
     type: String,

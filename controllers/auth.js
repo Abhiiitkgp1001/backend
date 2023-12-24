@@ -105,7 +105,7 @@ exports.postSignup = (req, res, next) => {
     })
     .then((hashPassword) => {
       hashpass = hashPassword;
-      const profile = new Profile();
+      const profile = new Profile({ email: email, phone_number: phone_number });
       return profile.save();
     })
     .then((profile) => {

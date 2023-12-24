@@ -5,7 +5,7 @@ const adminController = require("../controllers/adminController");
 const router = express.Router();
 const isAuth = require("../middlewares/auth");
 const apiAuth = require("../middlewares/apiEndPointAuth");
-const isAdmin = require("../middlewares/admin");
+const isAdmin = require("../middlewares/isAdmin");
 
 router.post(
   "/lock_account",
