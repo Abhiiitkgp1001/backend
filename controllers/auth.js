@@ -438,6 +438,9 @@ exports.postVerifyToken = (req, res, next) => {
 
 exports.getUser = (req, res) => {
   User.findOne({ _id: req.UserId })
+    .populate({
+      path: "profile",
+    })
     .then((user) => {
       user = UserDto.user(user);
       res.status(200).json({ user: user });
