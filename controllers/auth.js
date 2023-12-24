@@ -7,7 +7,7 @@ const mailer = require("../utils/sendEmail");
 const crypto = require("crypto");
 const redisClient = require("../utils/redisClient");
 const UserDto = require("../dtos/user.dto");
-const { Storage } = require('@google-cloud/storage');
+const { Storage } = require("@google-cloud/storage");
 
 function generateOTP() {
   // Generate a random number between 100000 and 999999 (inclusive)
@@ -479,7 +479,6 @@ exports.getAllUsers = (req, res, next) => {
     });
 };
 
-
 const bucketName = process.env.BUCKET_NAME;
 let projectId = process.env.PROJECT_ID;
 let keyFilename = process.env.GCP_KEY_FILE;
@@ -490,10 +489,11 @@ const storageClient = new Storage({
 const generateSignedUrl = (fileName) => {
   const blob = storageClient.bucket(bucketName).file(fileName);
 
-  return blob.getSignedUrl({
-    action: 'read',
-    expires: Date.now() + 60 * 60 * 1000,
-  })
+  return blob
+    .getSignedUrl({
+      action: "read",
+      expires: Date.now() + 60 * 60 * 1000,
+    })
     .then(([signedUrl]) => {
       console.log(`Generated Signed URL for ${fileName}`);
       console.log(signedUrl);
@@ -533,17 +533,17 @@ exports.get_profile = (req, res, next) => {
             .catch((err) => {
               console.log(err);
               res.status(500).send({ message: "Internal Server Error" });
-            })
+            });
         })
         .catch((err) => {
           console.log(err);
           res.status(404).send({ message: "Profile not found" });
-        })
+        });
     })
     .catch((err) => {
       console.log(err);
       res.status(404).send({ message: "User not found" });
-    })
+    });
 };
 
 exports.update_profile = (req, res, next) => {
@@ -564,17 +564,14 @@ exports.update_profile = (req, res, next) => {
     const blob = bucket.file(Date.now() + req.file.originalname);
     const blobStream = blob.createWriteStream();
 
+    blobStream.on("error", (err) => {
+      console.error("Error uploading to GCP:", err);
+      res
+        .status(500)
+        .send({ message: "Internal Server Error: Unable to Upload file to " });
+    });
 
-    blobStream.on('error', (err) => {
-      console.error('Error uploading to GCP:', err);
-      throw err;
-    })
-      .catch((err) => {
-        console.log(err);
-        res.status(500).send({ message: "Internal Server Error" });
-      });
-
-    blobStream.on('finish', () => {
+    blobStream.on("finish", () => {
       console.log("Finished file upload");
     });
 
@@ -639,13 +636,19 @@ exports.update_profile = (req, res, next) => {
                 console.log("step 6");
                 const bucket = storageClient.bucket(bucketName);
                 const fileToDelete = bucket.file(oldFilename);
-                fileToDelete.delete()
+                fileToDelete
+                  .delete()
                   .then(() => {
-                    console.log(`Deleted previous profile picture: ${oldFilename}`);
+                    console.log(
+                      `Deleted previous profile picture: ${oldFilename}`
+                    );
                     res.status(200).send({ message: "Profile Updated" });
                   })
                   .catch((err) => {
-                    console.error('Error deleting previous profile picture:', err);
+                    console.error(
+                      "Error deleting previous profile picture:",
+                      err
+                    );
                     res.status(500).send({ message: "Internal Server Error" });
                   });
               } else {
