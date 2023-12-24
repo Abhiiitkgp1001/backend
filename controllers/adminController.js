@@ -64,11 +64,6 @@ exports.postCreatePilot = (req, res, next) => {
   User.findById(req.userId)
     .then((user) => {
       loadedUser = user;
-      //   if (!user.admin) {
-      //     const err = new Error("Not authorized");
-      //     err.statusCode = 400;
-      //     throw err;
-      //   }
       // check if pilot allready exists
       return User.findOne({ email: email });
     })
@@ -122,17 +117,14 @@ exports.getAllPilots = (req, res, next) => {
   //   console.log("getAllPilots");
   User.findById(req.userId)
     .then((user) => {
-      //   if (!user.admin) {
-      //     const err = new Error("Not authorized");
-      //     err.statusCode = 400;
-      //     throw err;
-      //   }
       return user.populate({
         path: "childUsers",
+        populate: [{ path: "profile" }],
       });
     })
     .then((user_populated) => {
       const allPilots = user_populated.childUsers;
+      allPilots = allPilots.filter((pilot) => pilot.archived);
       res.status(200).json({
         pilots: allPilots,
       });
@@ -145,17 +137,11 @@ exports.getAllPilots = (req, res, next) => {
     });
 };
 
-exports.deletePilot = (req, res, next) => {
+exports.removePilot = (req, res, next) => {
   const pilotId = req.params.pilotId;
-  User.deleteOne({ _id: pilotId })
+  User.findByIdAndUpdate({ _id: pilotId }, { archived: true })
     .then((pilot) => {
-      console.log("Pilot removed successfully", pilot);
-      return User.findByIdAndUpdate(
-        { _id: req.UserId },
-        { $pull: { childUsers: pilotId } }
-      );
-    })
-    .then((adminUser) => {
+      console.log("Pilot Archived successfully", pilot);
       // admin user update its child removed
       res.status(200).json({
         message: "Pilot removed successfully",

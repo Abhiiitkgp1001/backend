@@ -39,11 +39,11 @@ router.get(
 );
 
 router.delete(
-    "/remove_pilot/:pilotId",
-    apiAuth,
-    isAuth,
-    isAdmin,
-    adminController.deletePilot
-  );
+  "/remove_pilot/:pilotId",
+  apiAuth,
+  isAuth,
+  isAdmin,
+  adminController.removePilot
+);
 
 module.exports = router;

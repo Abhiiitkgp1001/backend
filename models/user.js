@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const UserSchema = new mongoose.Schema({
   profile: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "DeviceSchema",
+    ref: "ProfileSchema",
   },
   devices: {
     type: [
@@ -40,6 +40,10 @@ const UserSchema = new mongoose.Schema({
         ref: "UserSchema",
       },
     ],
+  },
+  archived: {
+    type: Boolean,
+    default: false,
   },
 });
 
