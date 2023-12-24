@@ -25,6 +25,9 @@ const ProfileSchema = new mongoose.Schema({
   drving_liscence: {
     type: String,
   },
+  profile_pic: {
+    type: String,
+  },
 });
 
 module.exports = mongoose.model("ProfileSchema", ProfileSchema);
