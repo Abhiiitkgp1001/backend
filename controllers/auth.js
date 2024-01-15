@@ -519,7 +519,7 @@ exports.get_profile = (req, res, next) => {
   User.find({ _id: user_id }, { profile: 1 })
     .exec()
     .then((user) => {
-      console.log(user[0]);
+      // console.log(user[0]);
       console.log(user[0].profile);
       return Profile.findById(user[0].profile);
     })
@@ -599,20 +599,20 @@ exports.update_profile = (req, res, next) => {
   if (req.body.phone_number) {
     obj.phone_number = req.body.phone_number;
   }
-  if (req.body.mobile_no) {
-    obj.mobile_number = req.body.mobile_no;
-  }
-  if (req.body.driving_license_no) {
-    obj.driving_license = req.body.driving_license_no;
+  // if (req.body.mobile_no) {
+  //   obj.mobile_number = req.body.mobile_no;
+  // }
+  if (req.body.driving_license) {
+    obj.driving_license = req.body.driving_license;
   }
   if (req.body.address) {
     obj.address = req.body.address;
   }
-  if (req.body.pan_card_no) {
-    obj.pancard = req.body.pan_card_no;
+  if (req.body.pancard) {
+    obj.pancard = req.body.pancard;
   }
-  if (req.body.aadhar_card_no) {
-    obj.aadhar = req.body.aadhar_card_no;
+  if (req.body.aadhar) {
+    obj.aadhar = req.body.aadhar;
   }
   if (req.file) {
     obj.profile_pic = filename;
@@ -636,7 +636,7 @@ exports.update_profile = (req, res, next) => {
         error.statusCode = 404;
         throw error;
       }
-      console.log(profile[0]);
+      // console.log(profile[0]);
       oldFilename = profile[0].profile_pic;
       console.log("oldFilename:" + oldFilename);
       console.log("step 4");

@@ -46,7 +46,8 @@ router.post(
         });
       })
       .normalizeEmail(),
-    body("password").trim().notEmpty().isLength({ min: 8, max: 16 }),
+    body("password").trim().notEmpty(),
+    // .isLength({ min: 8, max: 16 })
     body("confirm_pass")
       .trim()
       .notEmpty()
@@ -98,9 +99,9 @@ router.post(
       "pawword length must be between 8 to 16 and must be alphanumeric"
     )
       .trim()
-      .notEmpty()
-      // .isLength({ min: 8, max: 16 })
-      .isAlphanumeric(),
+      .notEmpty(),
+    // .isLength({ min: 8, max: 16 })
+    // .isAlphanumeric(),
   ],
   authController.postSignin
 );
@@ -158,7 +159,7 @@ router.post(
     body("confirm_password", "Enter Password to confirm")
       .trim()
       .notEmpty()
-      .isLength({ min: 8, max: 16 })
+      // .isLength({ min: 8, max: 16 })
       .isAlphanumeric()
       .custom((val, { req }) => {
         if (val !== req.body.new_password) {
