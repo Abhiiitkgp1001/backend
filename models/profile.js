@@ -15,16 +15,16 @@ const ProfileSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  aadhar_id: {
+  aadhar: {
     type: String,
   },
-  pancard_id: {
+  pancard: {
     type: String,
   },
   address: {
     type: String,
   },
-  drving_liscence: {
+  drving_license: {
     type: String,
   },
   profile_pic: {

@@ -99,7 +99,7 @@ router.post(
     )
       .trim()
       .notEmpty()
-      .isLength({ min: 8, max: 16 })
+      // .isLength({ min: 8, max: 16 })
       .isAlphanumeric(),
   ],
   authController.postSignin
