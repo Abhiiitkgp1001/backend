@@ -59,6 +59,7 @@ exports.postCreatePilot = (req, res, next) => {
   let hashPass;
   let loadedUser;
   let pilot;
+  let loadedProile;
   // check if user ssigned in is admin else it should not be able to create pilot
   // get user by admin user id
   User.findById(req.userId)
@@ -82,6 +83,7 @@ exports.postCreatePilot = (req, res, next) => {
       return profile.save();
     })
     .then((profile) => {
+      loadedProile = profile;
       const pilot = new User({
         email: email,
         phone_number: phone_number,
@@ -103,6 +105,8 @@ exports.postCreatePilot = (req, res, next) => {
       res.status(201).json({
         message: "Pilot Created successfully",
         user: pilot,
+        profile: loadedProile,
+        // populate profile
       });
     })
     .catch((err) => {
