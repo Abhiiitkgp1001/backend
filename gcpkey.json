@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "celldoc-backend",
+  "private_key_id": "1df29665b135f6cb8df74bf630a0b9ff632b737b",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDicxcdO1mTRm2m\nyQNeB5D1WVJq4OJMEptHW0IVgCaIAHqcgYyHKdWPPCk2hkh2TlJhvf6jfJgF/jer\nmSDX9EP9dmcuX1+oirSBSqua/PadlzcnWWXAd4ET8zhZYfpF1GfDY2M38KW0IYLT\nXqj1qNOah1ijC+UOVqY3VE2ZDuLNUpVR9LBTrLrW87dDI9DirH2jyFOsL8SB8bX3\nJSCgC9dXMIKX4azuUXWwKa2wzVISLCM1TMA2g5YgarQ9jAIXH/Np+T5s+eY0axXa\n03fCfayocl4Oa7wsjxfIe1eFoNMH6lxKh/FvnHcK4d2X+/HJ1trE+TkwhdQiosJj\n1mb3uLQ/AgMBAAECggEAM4YLQs/vtCZIqbO/6+Od1G1D5uSPKM7s/MHjWeAEJFqz\niyugzVoz6LjACdNo5l4wuWOQ7iLZtjde9FDNm8VMuP15QaBatA8HPgm+3O9kr3uq\nBW5+S9oFCQSElDXKS5wmFdtlxmMfWMptKWm22NpWdykHfmWk8uu9OwaX91TfPub3\nSKjFZlluB/c47bO672gE0Vud90cgTW6lBI4wQUIYKWiAqB46fRzJH0aDvI2jFvVr\nzn66wWUTLv3HSq/9qJxnTdpNxhlq91BwK+XH2jVY4OxUtxM0AnulhnLglxzaUI1N\nxu6EqFgTf4BkeQaldwzyTY9ExU2rXJQZF6sbtEYh2QKBgQD5CvHfe8nxCdWDcJi+\njtfC2snd+UTPPv7KcKUuSfOef8gMjWA/4yIEFTfbdf0E8jbuAMsoeGlNRhfA3mHL\nPbZJw+UA4qND4vxK34gm986siXOyCrgA+T6oRCdRVM2ke4xpASHdgiIlmyJKSTIq\nGkXsHSgZhHdjpg+UmUIZJYjh9wKBgQDoxpFnO4gZwRQyAQFvCDcqtrhFhwSLpt4J\nOynK4G2S6/JaX2/7QdformBbXcCtDJVn9Hx9U9pkhsSqlrlhaCnKb2WzPt1iXQxt\n6In90+hvM6K8MmZ7idi7XQG2NJO9J9RTixzUR6GeR2oCwUVLiEdevIdfgolm7atm\nYYQ8qeet+QKBgHGbFIsmJRDXs5aqHoOPFc3FkKC5vTHtQr2GdVOQWJnNIKzZMTbz\nnejO5RQv1qQS+gvIQOTNSPv/JYbN6z6TgDxWKHkm6eNmAEEHh0x/bsA2U5i8WwPW\nr0aDEIyBau3Fjl+4LIKngnw1MIdCrKeYJJ15D3nUe8HxVtoqr4RZIwAxAoGBAKYu\nvTf6JFxen9BjL2bZcqkn8b6ReglJhFMKzfds6k1t7YPfhs7WXxJbC6eu8xOYXEHv\nJcFD0DLclCNFn+uOtec0SGMDioHi9DCzR3DTjKl3L8M0KD4iV3zMFaDDQIZWnRtX\nwak7yoJ5cZGt8Y7PKETWS79ALmAxZaCeFg5JLoHhAoGBAJ4C0gdTh93nNAOjUvDk\nCempQQL1ti1REi45/FURoj8FIQS/UfFvDqUZXafifWQ+o16SY+PfSzRqt69Jpdja\nGY/Ghh3p6Kh0+6UYo1OAeMimklMCr7/qEU9uV4Ti+9hTVlBzFh1sphPuCdyrt1GG\n/tiQ6fNhRUX89/RSV4bzDaH6\n-----END PRIVATE KEY-----\n",
+  "client_email": "imagestorage@celldoc-backend.iam.gserviceaccount.com",
+  "client_id": "106692622265764955801",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/imagestorage%40celldoc-backend.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
