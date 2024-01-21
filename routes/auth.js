@@ -197,7 +197,6 @@ router.patch(
   "/update_profile/:user_id",
   apiAuth,
   isAuth,
-  upload.single("profile_pic"),
   authController.update_profile
 );
 

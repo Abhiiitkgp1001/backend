@@ -24,7 +24,7 @@ const ProfileSchema = new mongoose.Schema({
   address: {
     type: String,
   },
-  drving_license: {
+  driving_license: {
     type: String,
   },
   profile_pic: {

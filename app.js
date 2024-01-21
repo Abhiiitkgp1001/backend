@@ -5,7 +5,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const redisClient = require("./utils/redisClient");
 const apiAuth = require("./middlewares/apiEndPointAuth");
-
+require('dotenv').config()
 const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
 
