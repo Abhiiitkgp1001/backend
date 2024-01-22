@@ -1,12 +1,14 @@
 const Profile = require("../models/profile");
 const { validationResult } = require("express-validator");
 const User = require("../models/user");
+const Vehicles = require("../models/vehicles");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mailer = require("../utils/sendEmail");
 const crypto = require("crypto");
 const redisClient = require("../utils/redisClient");
 const UserDto = require("../dtos/user.dto");
+const { throws } = require("assert");
 
 exports.postLockAccount = (req, res, next) => {
   const pilotId = req.body.pilotId;
@@ -145,12 +147,171 @@ exports.getAllPilots = (req, res, next) => {
 
 exports.removePilot = (req, res, next) => {
   const pilotId = req.params.pilotId;
+  let removedPilot;
   User.findByIdAndUpdate({ _id: pilotId }, { archived: true })
     .then((pilot) => {
+      removedPilot = pilot;
       console.log("Pilot Archived successfully", pilot);
       // admin user update its child removed
+      // return User.updateOne({ _id: req.userId,  })
+      return User.findByIdAndUpdate(
+        { _id: req.userId },
+        {
+          $pull: { childUsers: pilotId },
+        },
+        {
+          new: true,
+        }
+      ).populate({
+        path: ["childUsers", "addedVehicles"],
+      });
+    })
+    .then((adminUser) => {
       res.status(200).json({
         message: "Pilot removed successfully",
+        adminUsser: adminUser,
+        removedPilot: removedPilot,
+      });
+    })
+    .catch((err) => {
+      if (!err.statusCode) {
+        err.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+// vehicle linkings
+
+//link vehicle to admin
+exports.postAddVehicle = (req, res, next) => {
+  // get vehicle information
+  const registrationNumber = req.body.registrationNumber || null;
+  const vehicleLoadType = req.body.vehicleLoadType || null;
+  const vehicleWheelType = req.body.vehicleWheelType || null;
+  const deviceId = req.body.deviceId || null;
+
+  //get current adim user and then create vehicle and then update vehicle
+
+  let savedVehicle;
+  Vehicles;
+  Vehicles.findOne({ registrationNumber: registrationNumber })
+    .then((vehicle) => {
+      if (vehicle) {
+        if (vehicle.archived) {
+          vehicle.archived = false;
+          vehicle.deviceId = deviceId; // device can be replaced if device is malfunctioned
+          return vehicle.save();
+        }
+        const error = new Error(
+          "Vehicle allready exists for other user so cant be added"
+        );
+        error.statusCode = 409;
+        throw error;
+      }
+      vehicle = new Vehicles({
+        registrationNumber: registrationNumber,
+        vehicleWheelType: vehicleWheelType,
+        deviceId: deviceId,
+        vehicleLoadType: vehicleLoadType,
+      });
+      return vehicle.save();
+    })
+    .then((vehicle) => {
+      savedVehicle = vehicle;
+      return User.findById(req.userId);
+    })
+    .then((adminUser) => {
+      adminUser.addedVehicles.push(savedVehicle._id);
+      return adminUser.save();
+    })
+    .then((adminUser) => {
+      return User.findById(adminUser._id).populate([
+        {
+          path: childUsers,
+          populate: {
+            path: "profile", // Assuming 'profile' is a field in the 'User' model referencing the 'Profile' model
+          },
+        },
+        {
+          path: addeddVehicles,
+          populate: {
+            path: "vehicle",
+          },
+        },
+      ]);
+    })
+    .then((adminUser) => {
+      res.status(201).json({
+        message: "vehicle added",
+        adminUser: adminUser,
+        addedVehicle: savedVehicle,
+      });
+    })
+    .catch((err) => {
+      if (!err.statusCode) {
+        err.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+exports.deleteVehicle = (req, res, next) => {
+  // get vehicleId
+  let updatedVehicle;
+  const vehicleId = req.params.vehicleId;
+  Vehicles.findByIdAndUpdate(vehicleId, { archived: true })
+    .then((vehicleUpdated) => {
+      updatedVehicle = vehicleUpdated;
+      return User.findById(req.userId);
+    })
+    .then((adminUser) => {
+      adminUser.addedVehicles.pop(vehicleId);
+      return adminUser.save();
+    })
+    .then((adminUser) => {
+      return User.updateOne(
+        { _id: vehicleId, childUsers: { $in: adminUser.childUsers } },
+        { $pull: { "childUsers.$[].allowedVehicles": vehicleId } }
+      );
+    })
+    .then((result) => {
+      console.log(`${result.nModified} document(s) updated`);
+      return User.findById(req.userId);
+    })
+    .then((adminUser) => {
+      res.status(200).json({
+        message: "linked vehicle removed",
+        adminUser: adminUser,
+        updatedVehicle: updatedVehicle,
+      });
+    })
+    .catch((err) => {
+      if (!err.statusCode) {
+        err.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+//get all vehicles for an admin
+exports.getAllVehicles = (req, res, next) => {
+  //   console.log("getAllPilots");
+  User.findById(req.userId)
+    .then((user) => {
+      return user.populate({
+        path: "AddedVehicles",
+        populate: {
+          path: "deviceId", // Assuming 'deviceId' is a field in the 'User' model referencing the 'Devices' model
+        },
+        path: "linkedPilots",
+      });
+    })
+    .then((user_populated) => {
+      let allVehicles = user_populated.addedVehicles;
+      // allVehicles = allVehicles.filter((vehicle) => pilot.archived === false);
+      res.status(200).json({
+        vehicles: allVehicles,
       });
     })
     .catch((err) => {

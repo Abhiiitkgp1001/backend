@@ -46,4 +46,27 @@ router.delete(
   adminController.removePilot
 );
 
+router.post(
+  "/add_vehicle",
+  apiAuth,
+  isAuth,
+  isAdmin,
+  adminController.postAddVehicle
+);
+
+router.get(
+  "/get_all_vehicles",
+  apiAuth,
+  isAuth,
+  isAdmin,
+  adminController.getAllVehicles
+);
+
+router.delete(
+  "/delete_vehicle/:vehicleId",
+  apiAuth,
+  isAuth,
+  isAdmin,
+  adminController.deleteVehicle
+);
 module.exports = router;

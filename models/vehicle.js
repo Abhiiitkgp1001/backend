@@ -5,7 +5,7 @@ const VehicleSchema = mongoose.Schema({
     type: String,
     required: true,
   },
-  allowedUsers: {
+  linkedPilots: {
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -14,16 +14,27 @@ const VehicleSchema = mongoose.Schema({
     ],
   },
   vehicleLoadType: {
-    type: Boolean,
+    type: Boolean, // heavy or light weight
     required: true,
   },
-    vehicleWheelType: {
-        type: Number,
-        required: true,
+  vehicleWheelType: {
+    type: Number, // vehicle wheel type 2 , 3 more
+    required: true,
+    min: 2,
   },
   currentPilot: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "UserSchema",
   },
-  deviceId: {},
+  deviceId: {
+    // device
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "DeviceSchema",
+  },
+  archived: {
+    type: Boolean,
+    default: false,
+  },
 });
+
+module.exports = moongoose.model("Vehicles", VehicleSchema);

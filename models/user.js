@@ -45,6 +45,22 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  addedVehicles: {
+    type: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Vehicle",
+      },
+    ],
+  },
+  allowedVehicles: {
+    type: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Vehicle",
+      },
+    ],
+  },
 });
 
 module.exports = mongoose.model("UserSchema", UserSchema);

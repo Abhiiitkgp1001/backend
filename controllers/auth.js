@@ -664,7 +664,7 @@ exports.update_profile = (req, res, next) => {
       // }
       res
         .status(200)
-        .send({ message: "Profile Updated", profile: updatedProfile }); // dend updated profilex
+        .json({ message: "Profile Updated", profile: updatedProfile }); // dend updated profilex
     })
     .catch((err) => {
       console.log(err);
