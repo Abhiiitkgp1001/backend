@@ -1,7 +1,7 @@
 const Profile = require("../models/profile");
 const { validationResult } = require("express-validator");
 const User = require("../models/user");
-const Vehicles = require("../models/vehicles");
+const Vehicles = require("../models/vehicle");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mailer = require("../utils/sendEmail");
