@@ -1,7 +1,7 @@
 const Profile = require("../models/profile");
 const { validationResult } = require("express-validator");
 const User = require("../models/user");
-const Vehicles = require("../models/vehicles");
+const Vehicles = require("../models/vehicle");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mailer = require("../utils/sendEmail");
@@ -187,10 +187,10 @@ exports.removePilot = (req, res, next) => {
 exports.postAddVehicle = (req, res, next) => {
   // get vehicle information
   const registrationNumber = req.body.registrationNumber || null;
-  const vehicleLoadType = req.body.vehicleLoadType || null;
-  const vehicleWheelType = req.body.vehicleWheelType || null;
+  const vehicleLoadType = req.body.vehicleLoadType;
+  const vehicleWheelType = req.body.vehicleWheelType;
   const deviceId = req.body.deviceId || null;
-
+  console.log(registrationNumber, vehicleLoadType, vehicleWheelType, deviceId);
   //get current adim user and then create vehicle and then update vehicle
 
   let savedVehicle;
@@ -228,15 +228,15 @@ exports.postAddVehicle = (req, res, next) => {
     .then((adminUser) => {
       return User.findById(adminUser._id).populate([
         {
-          path: childUsers,
+          path: "childUsers",
           populate: {
             path: "profile", // Assuming 'profile' is a field in the 'User' model referencing the 'Profile' model
           },
         },
         {
-          path: addeddVehicles,
+          path: "addedVehicles",
           populate: {
-            path: "vehicle",
+            path: "vehicles",
           },
         },
       ]);
@@ -283,7 +283,7 @@ exports.deleteVehicle = (req, res, next) => {
       res.status(200).json({
         message: "linked vehicle removed",
         adminUser: adminUser,
-        updatedVehicle: updatedVehicle,
+        deletedVehicle: updatedVehicle,
       });
     })
     .catch((err) => {
@@ -300,11 +300,11 @@ exports.getAllVehicles = (req, res, next) => {
   User.findById(req.userId)
     .then((user) => {
       return user.populate({
-        path: "AddedVehicles",
+        path: "addedVehicles",
         populate: {
-          path: "deviceId", // Assuming 'deviceId' is a field in the 'User' model referencing the 'Devices' model
+          path: "deviceId",
+          path: "linkedPilots", // Assuming 'deviceId' is a field in the 'User' model referencing the 'Devices' model
         },
-        path: "linkedPilots",
       });
     })
     .then((user_populated) => {

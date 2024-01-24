@@ -49,7 +49,7 @@ const UserSchema = new mongoose.Schema({
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Vehicle",
+        ref: "Vehicles",
       },
     ],
   },
@@ -57,7 +57,7 @@ const UserSchema = new mongoose.Schema({
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Vehicle",
+        ref: "Vehicles",
       },
     ],
   },
