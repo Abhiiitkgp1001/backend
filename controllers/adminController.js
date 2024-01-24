@@ -230,13 +230,13 @@ exports.postAddVehicle = (req, res, next) => {
         {
           path: "childUsers",
           populate: {
-            path: "profile", // Assuming 'profile' is a field in the 'User' model referencing the 'Profile' model
+            path: ["profile", "allowedVehicles"], // Assuming 'profile' is a field in the 'User' model referencing the 'Profile' model
           },
         },
         {
           path: "addedVehicles",
           populate: {
-            path: "vehicles",
+            path: "linkedPilots",
           },
         },
       ]);
