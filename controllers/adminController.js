@@ -326,7 +326,7 @@ exports.getAllVehicles = (req, res, next) => {
     });
 };
 
-exports.postAssignVehicle = (req, res, next) => {
+exports.postAssignPilot = (req, res, next) => {
   //userID and vehicle ID
   const userId = req.body.userId;
   const vehicleId = req.body.vehicleId;
