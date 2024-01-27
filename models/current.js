@@ -9,6 +9,7 @@ const CurrentSchema = new mongoose.Schema({
   bms_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "BmsSchema",
+    required: true,
   },
   data: {
     type: [

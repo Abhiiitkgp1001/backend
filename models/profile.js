@@ -3,9 +3,11 @@ const mongoose = require("mongoose");
 const ProfileSchema = new mongoose.Schema({
   first_name: {
     type: String,
+    default: "",
   },
   last_name: {
     type: String,
+    default: "",
   },
   email: {
     type: String,
@@ -17,18 +19,23 @@ const ProfileSchema = new mongoose.Schema({
   },
   aadhar: {
     type: String,
+    default: "",
   },
   pancard: {
     type: String,
+    default: "",
   },
   address: {
     type: String,
+    default: "",
   },
   drving_license: {
     type: String,
+    default: "",
   },
   profile_pic: {
     type: String,
+    default: "",
   },
 });
 

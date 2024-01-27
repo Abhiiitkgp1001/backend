@@ -25,11 +25,13 @@ const VehicleSchema = mongoose.Schema({
   currentPilot: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "UserSchema",
+    default: null,
   },
   deviceId: {
     // device
     type: mongoose.Schema.Types.ObjectId,
     ref: "DeviceSchema",
+    default: null,
   },
   archived: {
     type: Boolean,

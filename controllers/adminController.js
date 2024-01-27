@@ -194,7 +194,7 @@ exports.postAddVehicle = (req, res, next) => {
   //get current adim user and then create vehicle and then update vehicle
 
   let savedVehicle;
-  Vehicles;
+
   Vehicles.findOne({ registrationNumber: registrationNumber })
     .then((vehicle) => {
       if (vehicle) {
@@ -253,6 +253,9 @@ exports.postAddVehicle = (req, res, next) => {
       if (!err.statusCode) {
         err.statusCode = 500;
       }
+      Vehicles.deleteById(savedVehicle._id).then((vehicle) => {
+        console.log(vehicle, "deleted as", err, "occured");
+      });
       next(err);
     });
 };
@@ -313,6 +316,97 @@ exports.getAllVehicles = (req, res, next) => {
       // allVehicles = allVehicles.filter((vehicle) => pilot.archived === false);
       res.status(200).json({
         vehicles: allVehicles,
+      });
+    })
+    .catch((err) => {
+      if (!err.statusCode) {
+        err.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+exports.postAssignVehicle = (req, res, next) => {
+  //userID and vehicle ID
+  const userId = req.body.userId;
+  const vehicleId = req.body.vehicleId;
+
+  // check one by one if user and vehicle is present by these ids
+  let loadedVehicle, loadedPilot;
+  Vehicles.findById(vehicleId)
+    .then((vehicle) => {
+      if (vehicle === null) {
+        const error = new Error("Vehicle doesnt  exist! ");
+        error.statusCode = 403;
+        throw error;
+      }
+      loadedVehicle = vehicle;
+      return User.findById(userId);
+    })
+    .then((pilot) => {
+      if (pilot === null) {
+        if (pilot === null) {
+          const error = new Error("Pilot doesnt  exist! ");
+          error.statusCode = 403;
+          throw error;
+        }
+      }
+      pilot.allowedVehicles.push(loadedVehicle._id);
+      loadedVehicle.linkedPilots.push(pilot._id);
+      return pilot.save();
+    })
+    .then((pilot) => {
+      loadedPilot = pilot;
+      return loadedVehicle.save();
+    })
+    .then((vehicle) => {
+      res.status(201).json({
+        message: "Pilot assigned successfully",
+        vehicle: vehicle,
+        pilot: loadedPilot,
+      });
+    })
+    .catch((err) => {
+      Vehicles.findByIdAndUpdate(vehicleId, {
+        $pull: { linkedPilots: userId },
+      }).then((vehicle) => {
+        console.log("Vehicle not linkeddue to ", err);
+      });
+      User.findByIdAndUpdate(userId, {
+        $pull: { allowedVehicles: vehicleId },
+      }).then((pilot) => {
+        console.log("Pilot not assigned  due to ", err);
+      });
+      if (!err.statusCode) {
+        err.statusCode = 500;
+      }
+      next(err);
+    });
+};
+
+exports.postRemoveAssignedPilot = (req, res, next) => {
+  //userID and vehicle ID
+  let updatedPilot, updatedVehicle;
+
+  const pilotId = req.body.userId;
+  const vehicleId = req.body.vehicleId;
+  User.findByIdAndUpdate(pilotId, {
+    $pull: { allowedVehicles: vehicleId },
+  })
+    .then((pilot) => {
+      updatedPilot = pilot;
+      return Vehicles.findByIdAndUpdate(vehicleId, {
+        $pull: { linkedPilots: pilotId },
+      });
+    })
+    .then((vehicle) => {
+      res.status(204).json({
+        message:
+          "Vehicle with ID " +
+          vehicleId +
+          " removed successfully from linkedPilot",
+        updatedPilot: updatedPilot,
+        updatedVehicle: vehicle,
       });
     })
     .catch((err) => {

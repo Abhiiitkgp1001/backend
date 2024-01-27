@@ -1,14 +1,10 @@
 const mongoose = require("mongoose");
 
 const VoltageSchema = new mongoose.Schema({
-  // cell_id: {
-  //     type: String,
-  //     required: true,
-  //     unique: true,
-  // },
   bms_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "BmsSchema",
+    required: true,
   },
   data: {
     type: [

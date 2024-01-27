@@ -69,4 +69,20 @@ router.delete(
   isAdmin,
   adminController.deleteVehicle
 );
+
+router.post(
+  "/assgin_pilot",
+  apiAuth,
+  isAuth,
+  isAdmin,
+  adminController.postAssignPilot
+);
+
+router.post(
+  "/remove_asigned_pilot",
+  apiAuth,
+  isAuth,
+  isAdmin,
+  adminController.postRemoveAsignedPilot
+);
 module.exports = router;

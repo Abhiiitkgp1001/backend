@@ -4,6 +4,7 @@ const UserSchema = new mongoose.Schema({
   profile: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "ProfileSchema",
+    required: true,
   },
   devices: {
     type: [

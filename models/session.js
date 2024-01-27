@@ -4,6 +4,7 @@ const SessionSchema = new mongoose.Schema({
   device_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "DeviceSchema",
+    required: true,
   },
   no_of_bms: {
     type: Number,
@@ -19,6 +20,7 @@ const SessionSchema = new mongoose.Schema({
   },
   session_name: {
     type: String,
+    required: true,
   },
   start_time: {
     type: Date,
