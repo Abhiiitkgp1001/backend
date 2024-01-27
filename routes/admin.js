@@ -83,6 +83,6 @@ router.post(
   apiAuth,
   isAuth,
   isAdmin,
-  adminController.postRemoveAsignedPilot
+  adminController.postRemoveAssignedPilot
 );
 module.exports = router;
