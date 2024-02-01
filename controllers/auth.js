@@ -492,6 +492,7 @@ exports.getAllUsers = (req, res, next) => {
 const bucketName = process.env.BUCKET_NAME;
 let projectId = process.env.PROJECT_ID;
 let keyFilename = process.env.GCP_KEY_FILE;
+console.log("storage creds:", bucketName, projectId, keyFilename);
 const storageClient = new Storage({
   projectId,
   keyFilename,
@@ -544,7 +545,8 @@ exports.get_profile = (req, res, next) => {
     })
     .then((signedUrl) => {
       loadedProfile.profile_pic = signedUrl;
-      res.status(200).send({ profile: loadedProfile });
+      console.log(loadedProfile);
+      res.status(200).json({ profile: loadedProfile });
     })
     .catch((err) => {
       console.log(err);
@@ -555,8 +557,7 @@ exports.get_profile = (req, res, next) => {
     });
 };
 
-exports.update_profile = (req, res, next) => {
-  console.log("step 1");
+exports.update_profile = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const err = new Error("Validation Failed");
@@ -564,28 +565,30 @@ exports.update_profile = (req, res, next) => {
     err.data = errors.array();
     throw err;
   }
-  console.log("step 2");
   let filename = null;
 
   const obj = {};
-  if (req.file) {
-    const bucket = storageClient.bucket(bucketName);
-    const blob = bucket.file(Date.now() + req.file.originalname);
-    const blobStream = blob.createWriteStream();
+  console.log(req.body);
+  // console.log("bucketName" + req.body.file.filename);
+  // console.log("bucketName" + req.body.filename);
+  if (req.body.file) {
+    const bucket = await storageClient.bucket(bucketName);
+    const blob = await bucket.file(Date.now() + req.body.file_name);
+    const blobStream = await blob.createWriteStream();
 
-    blobStream.on("error", (err) => {
+    await blobStream.on("error", (err) => {
       console.error("Error uploading to GCP:", err);
       res
         .status(500)
         .send({ message: "Internal Server Error: Unable to Upload file to " });
     });
 
-    blobStream.on("finish", () => {
+    await blobStream.on("finish", () => {
       console.log("Finished file upload");
     });
 
-    filename = blob.name;
-    blobStream.end(req.file.buffer);
+    filename = await blob.name;
+    await blobStream.end(req.body.file.buffer);
   }
   if (req.body.first_name) {
     obj.first_name = req.body.first_name;
@@ -614,11 +617,11 @@ exports.update_profile = (req, res, next) => {
   if (req.body.aadhar) {
     obj.aadhar = req.body.aadhar;
   }
-  if (req.file) {
+  if (req.body.file) {
     obj.profile_pic = filename;
   }
   let oldFilename;
-  User.find({ _id: req.params.user_id }, { profile: 1 })
+  User.findOne({ _id: req.params.user_id })
     .then((user) => {
       if (!user) {
         console.log("User not found");
@@ -626,8 +629,8 @@ exports.update_profile = (req, res, next) => {
         error.statusCode = 404;
         throw error;
       }
-      console.log(user[0]);
-      return Profile.find({ _id: user[0].profile }, { profile_pic: 1 });
+      console.log(user);
+      return Profile.findOne({ _id: user.profile });
     })
     .then((profile) => {
       if (!profile) {
@@ -636,17 +639,12 @@ exports.update_profile = (req, res, next) => {
         error.statusCode = 404;
         throw error;
       }
-      // console.log(profile[0]);
-      oldFilename = profile[0].profile_pic;
-      console.log("oldFilename:" + oldFilename);
-      console.log("step 4");
+      oldFilename = profile.profile_pic;
       return Profile.findByIdAndUpdate(profile._id, obj, { new: true });
     })
-    .then((updatedProfile) => {
-      console.log("step 5");
+    .then(async (updatedProfile) => {
       console.log(updatedProfile);
-      if (req.file && oldFilename) {
-        console.log("step 6");
+      if (req.body.file && oldFilename) {
         const bucket = storageClient.bucket(bucketName);
         const fileToDelete = bucket.file(oldFilename);
         fileToDelete
@@ -656,15 +654,16 @@ exports.update_profile = (req, res, next) => {
           })
           .catch((err) => {
             console.error("Error deleting previous profile picture:", err);
-            // res.status(500).send({ message: "Internal Server Error" });
           });
       }
-      // else {
-      //   res.status(200).send({ message: "Profile Updated" });
-      // }
+      if (updatedProfile.profile_pic) {
+        updatedProfile.profile_pic = await generateSignedUrl(
+          updatedProfile.profile_pic
+        );
+      }
       res
         .status(200)
-        .json({ message: "Profile Updated", profile: updatedProfile }); // dend updated profilex
+        .send({ message: "Profile Updated", profile: updatedProfile }); // dend updated profilex
     })
     .catch((err) => {
       console.log(err);
@@ -674,6 +673,126 @@ exports.update_profile = (req, res, next) => {
       next(err);
     });
 };
+
+// exports.update_profile = (req, res, next) => {
+// console.log("step 1");
+// const errors = validationResult(req);
+// if (!errors.isEmpty()) {
+//   const err = new Error("Validation Failed");
+//   err.statusCode = 400;
+//   err.data = errors.array();
+//   throw err;
+// }
+// console.log("step 2");
+// let filename = null;
+
+// const obj = {};
+// if (req.file) {
+//   const bucket = storageClient.bucket(bucketName);
+//   const blob = bucket.file(Date.now() + req.file.originalname);
+//   const blobStream = blob.createWriteStream();
+
+//   blobStream.on("error", (err) => {
+//     console.error("Error uploading to GCP:", err);
+//     res
+//       .status(500)
+//       .send({ message: "Internal Server Error: Unable to Upload file to " });
+//   });
+
+//   blobStream.on("finish", () => {
+//     console.log("Finished file upload");
+//   });
+
+//   filename = blob.name;
+//   blobStream.end(req.file.buffer);
+// }
+// if (req.body.first_name) {
+//   obj.first_name = req.body.first_name;
+// }
+// if (req.body.last_name) {
+//   obj.last_name = req.body.last_name;
+// }
+// if (req.body.email) {
+//   obj.email = req.body.email;
+// }
+// if (req.body.phone_number) {
+//   obj.phone_number = req.body.phone_number;
+// }
+// // if (req.body.mobile_no) {
+// //   obj.mobile_number = req.body.mobile_no;
+// // }
+// if (req.body.driving_license) {
+//   obj.driving_license = req.body.driving_license;
+// }
+// if (req.body.address) {
+//   obj.address = req.body.address;
+// }
+// if (req.body.pancard) {
+//   obj.pancard = req.body.pancard;
+// }
+// if (req.body.aadhar) {
+//   obj.aadhar = req.body.aadhar;
+// }
+// if (req.file) {
+//   obj.profile_pic = filename;
+// }
+// let oldFilename;
+// User.find({ _id: req.params.user_id }, { profile: 1 })
+//   .then((user) => {
+//     if (!user) {
+//       console.log("User not found");
+//       const error = new Error(`User not found`);
+//       error.statusCode = 404;
+//       throw error;
+//     }
+//     console.log(user[0]);
+//     return Profile.find({ _id: user[0].profile }, { profile_pic: 1 });
+//   })
+//   .then((profile) => {
+//     if (!profile) {
+//       console.log("Profile not found");
+//       const error = new Error(`Profile not found`);
+//       error.statusCode = 404;
+//       throw error;
+//     }
+//     // console.log(profile[0]);
+//     oldFilename = profile[0].profile_pic;
+//     console.log("oldFilename:" + oldFilename);
+//     console.log("step 4");
+//     return Profile.findByIdAndUpdate(profile._id, obj, { new: true });
+//   })
+//   .then((updatedProfile) => {
+//     console.log("step 5");
+//     console.log(updatedProfile);
+//     if (req.file && oldFilename) {
+//       console.log("step 6");
+//       const bucket = storageClient.bucket(bucketName);
+//       const fileToDelete = bucket.file(oldFilename);
+//       fileToDelete
+//         .delete()
+//         .then(() => {
+//           console.log(`Deleted previous profile picture: ${oldFilename}`);
+//         })
+//         .catch((err) => {
+//           console.error("Error deleting previous profile picture:", err);
+//           // res.status(500).send({ message: "Internal Server Error" });
+//         });
+//     }
+//     // else {
+//     //   res.status(200).send({ message: "Profile Updated" });
+//     // }
+//     res
+//       .status(200)
+//       .json({ message: "Profile Updated", profile: updatedProfile }); // dend updated profilex
+//   })
+//   .catch((err) => {
+//     console.log(err);
+//     if (!err.statusCode) {
+//       err.statusCode = 500;
+//     }
+//     next(err);
+//   });
+// };
 
 // exports.update_profile = (req, res, next) => {
 //   console.log("step 1");

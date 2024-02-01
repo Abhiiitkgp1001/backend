@@ -3,7 +3,6 @@ const bodyParser = require("body-parser");
 const bms_data_contoller = require("./controllers/data_controllers.js");
 const mongoose = require("mongoose");
 const cors = require("cors");
-// const dotnev = require("dotnev");
 const redisClient = require("./utils/redisClient");
 const apiAuth = require("./middlewares/apiEndPointAuth");
 
