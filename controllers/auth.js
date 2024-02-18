@@ -1,6 +1,8 @@
+const mongoose = require("mongoose");
 const Profile = require("../models/profile");
 const { validationResult } = require("express-validator");
 const User = require("../models/user");
+const Address = require("../models/address");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mailer = require("../utils/sendEmail");
@@ -52,14 +54,10 @@ exports.postSignUpInitiate = (req, res, next) => {
         error.statusCode = 503;
         throw error;
       }
-      mailer
-        .sendSignUpOtp(req.body.email, Otp)
-        .then((info) => {
-          console.log("Mail sent for Otp: " + info.messageId);
-        })
-        .catch((err) => {
-          console.log(`Error Sending Mail: ${err.message}`);
-        });
+      return mailer.sendSignUpOtp(req.body.email, Otp);
+    })
+    .then((info) => {
+      console.log("Mail sent for Otp: " + info.messageId);
       res.status(200).json({ message: "Otp has been sent to your Email" });
     })
     .catch((err) => {
@@ -70,77 +68,105 @@ exports.postSignUpInitiate = (req, res, next) => {
     });
 };
 
-exports.postSignup = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const err = new Error("Validation Failed");
-    err.statusCode = 409;
-    err.data = errors.array();
-    throw err;
-  }
+exports.postSignup = async (req, res, next) => {
   console.log(`${req.body.email}_${req.body.type}_${req.body.machine_id}`);
 
   const email = req.body.email;
   const phone_number = req.body.phone_number;
   const password = req.body.password;
   const admin = req.body.admin;
+  let hashPass, address, working_address, profile, user;
 
-  let hashpass;
-  redisClient
-    .get(req.body.email + "_" + req.body.type + "_" + req.body.machine_id)
-    .then((otp) => {
-      console.log(otp);
-      if (!otp) {
-        // res.status(403).json({ message: "Otp No longer valid" });
-        const error = new Error("Otp No longer valid");
-        error.statusCode = 403;
-        throw error;
-      } else if (otp !== req.body.otp) {
-        //   res.status(400).json({ message: "Otp did not match" });
-        const error = new Error("Otp did not match");
-        error.statusCode = 400;
-        throw error;
-      }
-      return bcrypt.hash(password, 12);
-    })
-    .then((hashPassword) => {
-      hashpass = hashPassword;
-      const profile = new Profile({ email: email, phone_number: phone_number });
-      return profile.save();
-    })
-    .then((profile) => {
-      const user = new User({
-        email: email,
-        phone_number: phone_number,
-        password: hashpass,
-        admin: admin,
-        profile: profile._id,
-      });
-      // Generate a unique reset token
-      return user.save();
-    })
-    .then((savedUser) => {
-      console.log("User created successfully ", savedUser);
-      const token = jwt.sign(
-        {
-          email: savedUser.email,
-          userId: savedUser._id.toString(),
-        },
-        "supersecret",
-        { expiresIn: "1h" }
-      );
-      res.status(201).json({
-        message: "User SignedUp successfully",
-        user: savedUser,
-        token: token,
-      });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+  // Start a MongoDB transaction
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const err = new Error("Validation Failed");
+      err.statusCode = 409;
+      err.data = errors.array();
+      throw err;
+    }
+
+    const otp = await redisClient.get(
+      req.body.email + "_" + req.body.type + "_" + req.body.machine_id
+    );
+    console.log(otp);
+    if (!otp) {
+      // res.status(403).json({ message: "Otp No longer valid" });
+      const error = new Error("Otp No longer valid");
+      error.statusCode = 403;
+      throw error;
+    } else if (otp !== req.body.otp) {
+      //   res.status(400).json({ message: "Otp did not match" });
+      const error = new Error("Otp did not match");
+      error.statusCode = 400;
+      throw error;
+    }
+    hashPass = await bcrypt.hash(password, 12);
+    //create two addresses for profile
+    address = new Address({});
+    working_address = new Address({});
+    profile = new Profile({
+      email: email,
+      phone_number: phone_number,
+      address: address._id,
+      working_address: working_address._id,
     });
+    console.log(profile._id);
+    await profile.save({ session: session });
+    user = new User({
+      email: email,
+      phone_number: phone_number,
+      password: hashPass,
+      admin: admin,
+      profile: profile._id,
+    });
+    address.user = user._id;
+    address.profile = profile._id;
+    working_address.user = user._id;
+    working_address.profile = profile._id;
+    await address.save({ session: session });
+    await working_address.save({ session: session });
+    await user.save({ session: session });
+    console.log("User created successfully ", user);
+    const token = jwt.sign(
+      {
+        email: user.email,
+        userId: user._id.toString(),
+      },
+      "supersecret",
+      { expiresIn: "1h" }
+    );
+    // If all documents are successfully created, commit the transaction
+    if (session.transaction != null && session.inTransaction()) {
+      await session.commitTransaction();
+    }
+    await session.endSession();
+    res.status(201).json({
+      message: "User SignedUp successfully",
+      user: user,
+      token: token,
+    });
+  } catch (err) {
+    console.log(`Error while creating new User ${err}`);
+    // If an error occurs, abort the transaction and handle the error
+    try {
+      if (session.transaction != null && session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      await session.endSession();
+      console.error("Transaction aborted:", err);
+    } catch (abortError) {
+      // Handle the case where aborting the transaction fails
+      console.error("Error aborting transaction:", abortError);
+    }
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
 exports.postSignin = (req, res, next) => {
@@ -504,7 +530,7 @@ const generateSignedUrl = (fileName) => {
   return blob
     .getSignedUrl({
       action: "read",
-      expires: Date.now() + 60 * 60 * 1000,
+      expires: Date.now() + 24 * 60 * 60 * 1000,
     })
     .then(([signedUrl]) => {
       console.log(`Generated Signed URL for ${fileName}`);
@@ -533,15 +559,6 @@ exports.get_profile = (req, res, next) => {
           resolve(null);
         });
       }
-      // generateSignedUrl(profile.profile_pic)
-      // .then((signedUrl) => {
-      //   profile.profile_pic = signedUrl;
-      //   res.status(200).send(profile);
-      // })
-      // .catch((err) => {
-      //   console.log(err);
-      //   res.status(500).send({ message: "Internal Server Error" });
-      // });
     })
     .then((signedUrl) => {
       loadedProfile.profile_pic = signedUrl;
@@ -558,6 +575,7 @@ exports.get_profile = (req, res, next) => {
 };
 
 exports.update_profile = async (req, res, next) => {
+  console.log(req.get("Content-Type"));
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const err = new Error("Validation Failed");
@@ -568,27 +586,32 @@ exports.update_profile = async (req, res, next) => {
   let filename = null;
 
   const obj = {};
-  console.log(req.body);
+  console.log("body", req.body);
   // console.log("bucketName" + req.body.file.filename);
-  // console.log("bucketName" + req.body.filename);
-  if (req.body.file) {
-    const bucket = await storageClient.bucket(bucketName);
-    const blob = await bucket.file(Date.now() + req.body.file_name);
-    const blobStream = await blob.createWriteStream();
+  // console.log("bucketName" + { ...req.file });
+  // for (const key in req.file) {
+  //   console.log("key " + key);
+  // }
 
-    await blobStream.on("error", (err) => {
+  if (req.file) {
+    console.log("file" + req.file);
+    const bucket = storageClient.bucket(bucketName);
+    const blob = bucket.file(Date.now() + req.file.originalname);
+    const blobStream = blob.createWriteStream();
+
+    blobStream.on("error", (err) => {
       console.error("Error uploading to GCP:", err);
       res
         .status(500)
         .send({ message: "Internal Server Error: Unable to Upload file to " });
     });
 
-    await blobStream.on("finish", () => {
+    blobStream.on("finish", () => {
       console.log("Finished file upload");
     });
 
-    filename = await blob.name;
-    await blobStream.end(req.body.file.buffer);
+    filename = blob.name;
+    blobStream.end(req.file.buffer);
   }
   if (req.body.first_name) {
     obj.first_name = req.body.first_name;
@@ -617,7 +640,7 @@ exports.update_profile = async (req, res, next) => {
   if (req.body.aadhar) {
     obj.aadhar = req.body.aadhar;
   }
-  if (req.body.file) {
+  if (req.file) {
     obj.profile_pic = filename;
   }
   let oldFilename;
@@ -629,7 +652,7 @@ exports.update_profile = async (req, res, next) => {
         error.statusCode = 404;
         throw error;
       }
-      console.log(user);
+      // console.log(user);
       return Profile.findOne({ _id: user.profile });
     })
     .then((profile) => {
@@ -644,7 +667,7 @@ exports.update_profile = async (req, res, next) => {
     })
     .then(async (updatedProfile) => {
       console.log(updatedProfile);
-      if (req.body.file && oldFilename) {
+      if (req.file && oldFilename) {
         const bucket = storageClient.bucket(bucketName);
         const fileToDelete = bucket.file(oldFilename);
         fileToDelete
@@ -661,6 +684,7 @@ exports.update_profile = async (req, res, next) => {
           updatedProfile.profile_pic
         );
       }
+      console.log(`Updated profile picture: ${updatedProfile}`);
       res
         .status(200)
         .send({ message: "Profile Updated", profile: updatedProfile }); // dend updated profilex
@@ -673,248 +697,3 @@ exports.update_profile = async (req, res, next) => {
       next(err);
     });
 };
-
-// exports.update_profile = (req, res, next) => {
-// console.log("step 1");
-// const errors = validationResult(req);
-// if (!errors.isEmpty()) {
-//   const err = new Error("Validation Failed");
-//   err.statusCode = 400;
-//   err.data = errors.array();
-//   throw err;
-// }
-// console.log("step 2");
-// let filename = null;
-
-// const obj = {};
-// if (req.file) {
-//   const bucket = storageClient.bucket(bucketName);
-//   const blob = bucket.file(Date.now() + req.file.originalname);
-//   const blobStream = blob.createWriteStream();
-
-//   blobStream.on("error", (err) => {
-//     console.error("Error uploading to GCP:", err);
-//     res
-//       .status(500)
-//       .send({ message: "Internal Server Error: Unable to Upload file to " });
-//   });
-
-//   blobStream.on("finish", () => {
-//     console.log("Finished file upload");
-//   });
-
-//   filename = blob.name;
-//   blobStream.end(req.file.buffer);
-// }
-// if (req.body.first_name) {
-//   obj.first_name = req.body.first_name;
-// }
-// if (req.body.last_name) {
-//   obj.last_name = req.body.last_name;
-// }
-// if (req.body.email) {
-//   obj.email = req.body.email;
-// }
-// if (req.body.phone_number) {
-//   obj.phone_number = req.body.phone_number;
-// }
-// // if (req.body.mobile_no) {
-// //   obj.mobile_number = req.body.mobile_no;
-// // }
-// if (req.body.driving_license) {
-//   obj.driving_license = req.body.driving_license;
-// }
-// if (req.body.address) {
-//   obj.address = req.body.address;
-// }
-// if (req.body.pancard) {
-//   obj.pancard = req.body.pancard;
-// }
-// if (req.body.aadhar) {
-//   obj.aadhar = req.body.aadhar;
-// }
-// if (req.file) {
-//   obj.profile_pic = filename;
-// }
-// let oldFilename;
-// User.find({ _id: req.params.user_id }, { profile: 1 })
-//   .then((user) => {
-//     if (!user) {
-//       console.log("User not found");
-//       const error = new Error(`User not found`);
-//       error.statusCode = 404;
-//       throw error;
-//     }
-//     console.log(user[0]);
-//     return Profile.find({ _id: user[0].profile }, { profile_pic: 1 });
-//   })
-//   .then((profile) => {
-//     if (!profile) {
-//       console.log("Profile not found");
-//       const error = new Error(`Profile not found`);
-//       error.statusCode = 404;
-//       throw error;
-//     }
-//     // console.log(profile[0]);
-//     oldFilename = profile[0].profile_pic;
-//     console.log("oldFilename:" + oldFilename);
-//     console.log("step 4");
-//     return Profile.findByIdAndUpdate(profile._id, obj, { new: true });
-//   })
-//   .then((updatedProfile) => {
-//     console.log("step 5");
-//     console.log(updatedProfile);
-//     if (req.file && oldFilename) {
-//       console.log("step 6");
-//       const bucket = storageClient.bucket(bucketName);
-//       const fileToDelete = bucket.file(oldFilename);
-//       fileToDelete
-//         .delete()
-//         .then(() => {
-//           console.log(`Deleted previous profile picture: ${oldFilename}`);
-//         })
-//         .catch((err) => {
-//           console.error("Error deleting previous profile picture:", err);
-//           // res.status(500).send({ message: "Internal Server Error" });
-//         });
-//     }
-//     // else {
-//     //   res.status(200).send({ message: "Profile Updated" });
-//     // }
-//     res
-//       .status(200)
-//       .json({ message: "Profile Updated", profile: updatedProfile }); // dend updated profilex
-//   })
-//   .catch((err) => {
-//     console.log(err);
-//     if (!err.statusCode) {
-//       err.statusCode = 500;
-//     }
-//     next(err);
-//   });
-// };
-
-// exports.update_profile = (req, res, next) => {
-//   console.log("step 1");
-//   const errors = validationResult(req);
-//   if (!errors.isEmpty()) {
-//     const err = new Error("Validation Failed");
-//     err.statusCode = 400;
-//     err.data = errors.array();
-//     throw err;
-//   }
-//   console.log("step 2");
-//   let filename = null;
-
-//   const obj = {};
-//   if (req.file) {
-//     const bucket = storageClient.bucket(bucketName);
-//     const blob = bucket.file(Date.now() + req.file.originalname);
-//     const blobStream = blob.createWriteStream();
-
-//     blobStream.on("error", (err) => {
-//       console.error("Error uploading to GCP:", err);
-//       res
-//         .status(500)
-//         .send({ message: "Internal Server Error: Unable to Upload file to " });
-//     });
-
-//     blobStream.on("finish", () => {
-//       console.log("Finished file upload");
-//     });
-
-//     filename = blob.name;
-//     blobStream.end(req.file.buffer);
-//   }
-//   if (req.body.first_name) {
-//     obj.first_name = req.body.first_name;
-//   }
-//   if (req.body.last_name) {
-//     obj.last_name = req.body.last_name;
-//   }
-//   if (req.body.email) {
-//     obj.email = req.body.email;
-//   }
-//   if (req.body.phone_number) {
-//     obj.phone_number = req.body.phone_number;
-//   }
-//   if (req.body.mobile_no) {
-//     obj.mobile_no = req.body.mobile_no;
-//   }
-//   if (req.body.driving_license_no) {
-//     obj.driving_license_no = req.body.driving_license_no;
-//   }
-//   if (req.body.address) {
-//     obj.address = req.body.address;
-//   }
-//   if (req.body.pan_card_no) {
-//     obj.pan_card_no = req.body.pan_card_no;
-//   }
-//   if (req.body.aadhar_card_no) {
-//     obj.aadhar_card_no = req.body.aadhar_card_no;
-//   }
-//   if (req.file) {
-//     obj.profile_pic = filename;
-//   }
-
-//   console.log("step 3");
-//   User.find({ _id: req.params.user_id }, { profile: 1 })
-//     .then((user) => {
-//       if (!user) {
-//         console.log("User not found");
-//         return res.status(404).send({ message: "User not found" });
-//       }
-//       console.log(user[0]);
-//       Profile.find({ _id: user[0].profile }, { profile_pic: 1 })
-//         .then((profile) => {
-//           if (!profile) {
-//             console.log("Profile not found");
-//             return res.status(404).send({ message: "Profile not found" });
-//           }
-//           console.log(profile[0]);
-//           const oldFilename = profile[0].profile_pic;
-//           console.log("oldFilename:" + oldFilename);
-//           console.log("step 4");
-//           Profile.findByIdAndUpdate(user[0].profile, obj, { new: true })
-//             .exec()
-//             .then((updatedProfile) => {
-//               console.log("step 5");
-//               console.log(updatedProfile);
-//               if (req.file && oldFilename) {
-//                 console.log("step 6");
-//                 const bucket = storageClient.bucket(bucketName);
-//                 const fileToDelete = bucket.file(oldFilename);
-//                 fileToDelete
-//                   .delete()
-//                   .then(() => {
-//                     console.log(
-//                       `Deleted previous profile picture: ${oldFilename}`
-//                     );
-//                     res.status(200).send({ message: "Profile Updated" });
-//                   })
-//                   .catch((err) => {
-//                     console.error(
-//                       "Error deleting previous profile picture:",
-//                       err
-//                     );
-//                     res.status(500).send({ message: "Internal Server Error" });
-//                   });
-//               } else {
-//                 res.status(200).send({ message: "Profile Updated" });
-//               }
-//             })
-//             .catch((err) => {
-//               console.log(err);
-//               res.status(500).send({ message: "Internal Server Error" });
-//             });
-//         })
-//         .catch((err) => {
-//           console.log(err);
-//           res.status(500).send({ message: "Internal Server Error" });
-//         });
-//     })
-//     .catch((err) => {
-//       console.log(err);
-//       res.status(500).send({ message: "Internal Server Error" });
-//     });
-// };

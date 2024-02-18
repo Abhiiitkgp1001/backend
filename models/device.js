@@ -5,12 +5,12 @@ const DeviceSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  userId: {
+  user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "UserSchema",
+    ref: "Users",
     default: null,
   },
-  vehicleId: {
+  vehicle: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Vehicles",
     default: null,
@@ -19,14 +19,14 @@ const DeviceSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  sessions: {
+  trip: {
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "SessionSchema",
+        ref: "Sessions",
       },
     ],
   },
 });
 
-module.exports = mongoose.model("DeviceSchema", DeviceSchema);
+module.exports = mongoose.model("Devices", DeviceSchema);

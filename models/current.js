@@ -8,7 +8,7 @@ const CurrentSchema = new mongoose.Schema({
   // },
   bms_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "BmsSchema",
+    ref: "Bms",
     required: true,
   },
   data: {
@@ -31,4 +31,4 @@ const CurrentSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("CurrentSchema", CurrentSchema);
+module.exports = mongoose.model("Currents", CurrentSchema);

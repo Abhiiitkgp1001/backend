@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const TemperatureSchema = new mongoose.Schema({
   bms_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "BmsSchema",
+    ref: "Bms",
     required: true,
   },
   data: {
@@ -26,4 +26,4 @@ const TemperatureSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("TemperatureSchema", TemperatureSchema);
+module.exports = mongoose.model("Temperatures", TemperatureSchema);

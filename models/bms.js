@@ -5,7 +5,7 @@ const BmsSchema = new mongoose.Schema({
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "VoltageSchema",
+        ref: "Voltages",
       },
     ],
   },
@@ -13,7 +13,7 @@ const BmsSchema = new mongoose.Schema({
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "TemperatureSchema",
+        ref: "Temperatures",
       },
     ],
   },
@@ -21,7 +21,7 @@ const BmsSchema = new mongoose.Schema({
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "CurrentSchema",
+        ref: "Currents",
       },
     ],
   },
@@ -31,4 +31,4 @@ const BmsSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("BmsSchema", BmsSchema);
+module.exports = mongoose.model("Bms", BmsSchema);

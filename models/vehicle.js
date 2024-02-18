@@ -9,7 +9,7 @@ const VehicleSchema = mongoose.Schema({
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "UserSchema",
+        ref: "Users",
       },
     ],
   },
@@ -21,16 +21,17 @@ const VehicleSchema = mongoose.Schema({
     type: Number, // vehicle wheel type 2 , 3 more
     required: true,
     min: 2,
+    max: 4,
   },
   currentPilot: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "UserSchema",
+    ref: "Users",
     default: null,
   },
-  deviceId: {
+  device: {
     // device
     type: mongoose.Schema.Types.ObjectId,
-    ref: "DeviceSchema",
+    ref: "Devices",
     default: null,
   },
   archived: {

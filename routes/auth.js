@@ -28,7 +28,7 @@ router.post(
     body("phone_number", "Please enter your phone number")
       .trim()
       .isMobilePhone()
-      .custom((value, { req }) => {
+      .custom(async (value, { req }) => {
         return User.findOne({ phone_number: value }).then((userDoc) => {
           if (userDoc) {
             return Promise.reject("Phone Number already exists!");
@@ -197,7 +197,7 @@ router.patch(
   "/update_profile/:user_id",
   apiAuth,
   isAuth,
-  upload.single("profile_pic"),
+  upload.single("file"),
   authController.update_profile
 );
 

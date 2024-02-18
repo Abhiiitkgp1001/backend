@@ -3,13 +3,13 @@ const bodyParser = require("body-parser");
 const bms_data_contoller = require("./controllers/data_controllers.js");
 const mongoose = require("mongoose");
 const cors = require("cors");
+require("dotenv").config();
 const redisClient = require("./utils/redisClient");
 const apiAuth = require("./middlewares/apiEndPointAuth");
 
 const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
 
-require("dotenv").config();
 const app = express();
 const port = 80;
 const dbUrl =

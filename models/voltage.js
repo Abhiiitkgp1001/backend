@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const VoltageSchema = new mongoose.Schema({
   bms_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "BmsSchema",
+    ref: "Bms",
     required: true,
   },
   data: {
@@ -26,4 +26,4 @@ const VoltageSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("VoltageSchema", VoltageSchema);
+module.exports = mongoose.model("Voltages", VoltageSchema);

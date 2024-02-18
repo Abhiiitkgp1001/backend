@@ -3,20 +3,21 @@ const mongoose = require("mongoose");
 const UserSchema = new mongoose.Schema({
   profile: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "ProfileSchema",
+    ref: "Profiles",
     required: true,
   },
   devices: {
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "DeviceSchema",
+        ref: "Devices",
       },
     ],
   },
   email: {
     type: String,
     required: true,
+    // match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   },
   password: {
     type: String,
@@ -25,6 +26,7 @@ const UserSchema = new mongoose.Schema({
   phone_number: {
     type: String,
     required: true,
+    // match: /^(?=\d{10}$)\d*(\d)\1{9}$/,
   },
   admin: {
     type: Boolean,
@@ -38,7 +40,7 @@ const UserSchema = new mongoose.Schema({
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "UserSchema",
+        ref: "Users",
       },
     ],
   },
@@ -64,12 +66,4 @@ const UserSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("UserSchema", UserSchema);
-
-// user_id: uuid(PK);
-// profile: Ref_id;
-// mobile_no: int;
-// email: String;
-// password: String;
-// admin: bool;
-// devices: [Ref_id];
+module.exports = mongoose.model("Users", UserSchema);

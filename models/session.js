@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const SessionSchema = new mongoose.Schema({
   device_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "DeviceSchema",
+    ref: "Devices",
     required: true,
   },
   no_of_bms: {
@@ -14,7 +14,7 @@ const SessionSchema = new mongoose.Schema({
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "BmsSchema",
+        ref: "Bms",
       },
     ],
   },
@@ -32,4 +32,4 @@ const SessionSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("SessionSchema", SessionSchema);
+module.exports = mongoose.model("Sessions", SessionSchema);
