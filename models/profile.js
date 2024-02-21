@@ -53,17 +53,10 @@ const ProfileSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Users",
   },
+  dateOfBirth: {
+    type: Date,
+    default: null,
+  },
 });
 
 module.exports = mongoose.model("Profiles", ProfileSchema);
-
-// Profile Modal
-//     profile_id : uuid (PK)
-//     first_name : String
-//     last_name : String
-//     email : String
-//     mobile_no : String
-//     driving_license_no : String
-//     address : String
-//     pan_card_no :  String
-//     aadhar_card_no : String

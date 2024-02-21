@@ -6,10 +6,11 @@ const Address = require("../models/address");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mailer = require("../utils/sendEmail");
-const crypto = require("crypto");
+// const crypto = require("crypto");
 const redisClient = require("../utils/redisClient");
 const UserDto = require("../dtos/user.dto");
 const { Storage } = require("@google-cloud/storage");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
 function generateOTP() {
   // Generate a random number between 100000 and 999999 (inclusive)
@@ -515,29 +516,48 @@ exports.getAllUsers = (req, res, next) => {
 };
 
 // uploading profile  image
-const bucketName = process.env.BUCKET_NAME;
-let projectId = process.env.PROJECT_ID;
-let keyFilename = process.env.GCP_KEY_FILE;
-console.log("storage creds:", bucketName, projectId, keyFilename);
-const storageClient = new Storage({
-  projectId,
-  keyFilename,
-});
+// const bucketName = process.env.BUCKET_NAME;
+// let projectId = process.env.PROJECT_ID;
+// let keyFilename = process.env.GCP_KEY_FILE;
+// console.log("storage creds:", bucketName, projectId, keyFilename);
 
-const generateSignedUrl = (fileName) => {
-  const blob = storageClient.bucket(bucketName).file(fileName);
+// console.log(
+//   process.env.AWS_ACCESS_KEY_ID,
+//   process.env.AWS_SECRET_ACCESS_KEY,
+//   process.env.REGION
+// );
+// AWS.config.update({
+//   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+//   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+//   region: process.env.REGION, // Using region code
+// });
+// const storageClient = new Storage({
+//   projectId,
+//   keyFilename,
+// });
 
-  return blob
-    .getSignedUrl({
-      action: "read",
-      expires: Date.now() + 24 * 60 * 60 * 1000,
-    })
-    .then(([signedUrl]) => {
-      console.log(`Generated Signed URL for ${fileName}`);
-      console.log(signedUrl);
-      return signedUrl;
-    });
-};
+// credentials: {
+//   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+//   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+// },
+// region: process.env.REGION,
+
+// Create S3 service object
+
+// const generateSignedUrl = (fileName) => {
+//   const blob = storageClient.bucket(bucketName).file(fileName);
+
+//   return blob
+//     .getSignedUrl({
+//       action: "read",
+//       expires: Date.now() + 24 * 60 * 60 * 1000,
+//     })
+//     .then(([signedUrl]) => {
+//       console.log(`Generated Signed URL for ${fileName}`);
+//       console.log(signedUrl);
+//       return signedUrl;
+//     });
+// };
 
 exports.get_profile = (req, res, next) => {
   const user_id = req.params.user_id;
@@ -553,7 +573,7 @@ exports.get_profile = (req, res, next) => {
     .then((profile) => {
       loadedProfile = profile;
       if (profile.profile_pic) {
-        return generateSignedUrl(profile.profile_pic);
+        return profile.profile_pic;
       } else {
         return new Promise((resolve, reject) => {
           resolve(null);
@@ -575,7 +595,7 @@ exports.get_profile = (req, res, next) => {
 };
 
 exports.update_profile = async (req, res, next) => {
-  console.log(req.get("Content-Type"));
+  const s3 = new S3Client({});
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const err = new Error("Validation Failed");
@@ -586,32 +606,24 @@ exports.update_profile = async (req, res, next) => {
   let filename = null;
 
   const obj = {};
-  console.log("body", req.body);
-  // console.log("bucketName" + req.body.file.filename);
-  // console.log("bucketName" + { ...req.file });
-  // for (const key in req.file) {
-  //   console.log("key " + key);
-  // }
-
+  let fileData;
   if (req.file) {
-    console.log("file" + req.file);
-    const bucket = storageClient.bucket(bucketName);
-    const blob = bucket.file(Date.now() + req.file.originalname);
-    const blobStream = blob.createWriteStream();
-
-    blobStream.on("error", (err) => {
-      console.error("Error uploading to GCP:", err);
-      res
-        .status(500)
-        .send({ message: "Internal Server Error: Unable to Upload file to " });
+    const key = `${Date.now()}_${req.file.originalname}`;
+    const command = new PutObjectCommand({
+      Bucket: process.env.BUCKET_NAME,
+      Key: key,
+      Body: req.file.buffer,
+      // ContentType: req.file.mimetype,
     });
+    try {
+      filename = Date.now() + req.file.originalname;
+      fileData = await s3.send(command);
 
-    blobStream.on("finish", () => {
-      console.log("Finished file upload");
-    });
-
-    filename = blob.name;
-    blobStream.end(req.file.buffer);
+      console.log("Profile picture uploaded successfully:", fileData.Location);
+      // Store the S3 object URL (data.Location) in your database or use it as needed
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
+    }
   }
   if (req.body.first_name) {
     obj.first_name = req.body.first_name;
@@ -625,15 +637,12 @@ exports.update_profile = async (req, res, next) => {
   if (req.body.phone_number) {
     obj.phone_number = req.body.phone_number;
   }
-  // if (req.body.mobile_no) {
-  //   obj.mobile_number = req.body.mobile_no;
-  // }
   if (req.body.driving_license) {
     obj.driving_license = req.body.driving_license;
   }
-  if (req.body.address) {
-    obj.address = req.body.address;
-  }
+  // if (req.body.address) {
+  //   obj.address = req.body.address;
+  // }
   if (req.body.pancard) {
     obj.pancard = req.body.pancard;
   }
@@ -667,23 +676,24 @@ exports.update_profile = async (req, res, next) => {
     })
     .then(async (updatedProfile) => {
       console.log(updatedProfile);
-      if (req.file && oldFilename) {
-        const bucket = storageClient.bucket(bucketName);
-        const fileToDelete = bucket.file(oldFilename);
-        fileToDelete
-          .delete()
-          .then(() => {
-            console.log(`Deleted previous profile picture: ${oldFilename}`);
-          })
-          .catch((err) => {
-            console.error("Error deleting previous profile picture:", err);
-          });
-      }
-      if (updatedProfile.profile_pic) {
-        updatedProfile.profile_pic = await generateSignedUrl(
-          updatedProfile.profile_pic
-        );
-      }
+      // if (req.file && oldFilename) {
+      //   const bucket = storageClient.bucket(bucketName);
+      //   const fileToDelete = bucket.file(oldFilename);
+      //   fileToDelete
+      //     .delete()
+      //     .then(() => {
+      //       console.log(`Deleted previous profile picture: ${oldFilename}`);
+      //     })
+      //     .catch((err) => {
+      //       console.error("Error deleting previous profile picture:", err);
+      //     });
+      // }
+      // if (updatedProfile.profile_pic) {
+      //   return updatedProfile.profile_pic;
+      //   // await generateSignedUrl(
+      //   // updatedProfile.profile_pic
+      //   // );
+      // }
       console.log(`Updated profile picture: ${updatedProfile}`);
       res
         .status(200)
@@ -697,3 +707,133 @@ exports.update_profile = async (req, res, next) => {
       next(err);
     });
 };
+
+// exports.update_profile = async (req, res, next) => {
+
+// Retrieve object from S3 bucket
+// const params = {
+//   Bucket: 'YOUR_BUCKET_NAME',
+//   Key: 'OBJECT_KEY'
+// };
+//   console.log(req.get("Content-Type"));
+//   const errors = validationResult(req);
+//   if (!errors.isEmpty()) {
+//     const err = new Error("Validation Failed");
+//     err.statusCode = 400;
+//     err.data = errors.array();
+//     throw err;
+//   }
+//   let filename = null;
+
+//   const obj = {};
+//   console.log("body", req.body);
+//   // console.log("bucketName" + req.body.file.filename);
+//   // console.log("bucketName" + { ...req.file });
+//   // for (const key in req.file) {
+//   //   console.log("key " + key);
+//   // }
+
+//   if (req.file) {
+//     console.log("file" + req.file);
+//     const bucket = storageClient.bucket(bucketName);
+//     const blob = bucket.file(Date.now() + req.file.originalname);
+//     const blobStream = blob.createWriteStream();
+
+//     blobStream.on("error", (err) => {
+//       console.error("Error uploading to GCP:", err);
+//       res
+//         .status(500)
+//         .send({ message: "Internal Server Error: Unable to Upload file to " });
+//     });
+
+//     blobStream.on("finish", () => {
+//       console.log("Finished file upload");
+//     });
+
+//     filename = blob.name;
+//     blobStream.end(req.file.buffer);
+//   }
+//   if (req.body.first_name) {
+//     obj.first_name = req.body.first_name;
+//   }
+//   if (req.body.last_name) {
+//     obj.last_name = req.body.last_name;
+//   }
+//   if (req.body.email) {
+//     obj.email = req.body.email;
+//   }
+//   if (req.body.phone_number) {
+//     obj.phone_number = req.body.phone_number;
+//   }
+//   // if (req.body.mobile_no) {
+//   //   obj.mobile_number = req.body.mobile_no;
+//   // }
+//   if (req.body.driving_license) {
+//     obj.driving_license = req.body.driving_license;
+//   }
+//   if (req.body.address) {
+//     obj.address = req.body.address;
+//   }
+//   if (req.body.pancard) {
+//     obj.pancard = req.body.pancard;
+//   }
+//   if (req.body.aadhar) {
+//     obj.aadhar = req.body.aadhar;
+//   }
+//   if (req.file) {
+//     obj.profile_pic = filename;
+//   }
+//   let oldFilename;
+//   User.findOne({ _id: req.params.user_id })
+//     .then((user) => {
+//       if (!user) {
+//         console.log("User not found");
+//         const error = new Error(`User not found`);
+//         error.statusCode = 404;
+//         throw error;
+//       }
+//       // console.log(user);
+//       return Profile.findOne({ _id: user.profile });
+//     })
+//     .then((profile) => {
+//       if (!profile) {
+//         console.log("Profile not found");
+//         const error = new Error(`Profile not found`);
+//         error.statusCode = 404;
+//         throw error;
+//       }
+//       oldFilename = profile.profile_pic;
+//       return Profile.findByIdAndUpdate(profile._id, obj, { new: true });
+//     })
+//     .then(async (updatedProfile) => {
+//       console.log(updatedProfile);
+//       if (req.file && oldFilename) {
+//         const bucket = storageClient.bucket(bucketName);
+//         const fileToDelete = bucket.file(oldFilename);
+//         fileToDelete
+//           .delete()
+//           .then(() => {
+//             console.log(`Deleted previous profile picture: ${oldFilename}`);
+//           })
+//           .catch((err) => {
+//             console.error("Error deleting previous profile picture:", err);
+//           });
+//       }
+//       if (updatedProfile.profile_pic) {
+//         updatedProfile.profile_pic = await generateSignedUrl(
+//           updatedProfile.profile_pic
+//         );
+//       }
+//       console.log(`Updated profile picture: ${updatedProfile}`);
+//       res
+//         .status(200)
+//         .send({ message: "Profile Updated", profile: updatedProfile }); // dend updated profilex
+//     })
+//     .catch((err) => {
+//       console.log(err);
+//       if (!err.statusCode) {
+//         err.statusCode = 500;
+//       }
+//       next(err);
+//     });
+// };

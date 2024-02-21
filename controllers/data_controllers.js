@@ -2,7 +2,7 @@ const BMS = require("../models/bms.js");
 const Current = require("../models/current.js");
 const Voltage = require("../models/voltage");
 const Temperature = require("../models/temperature.js");
-const Session = require("../models/session.js");
+const Session = require("../models/Trips.js");
 const Device = require("../models/device.js");
 const mongoose = require("mongoose");
 

@@ -23,7 +23,7 @@ const DeviceSchema = new mongoose.Schema({
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Sessions",
+        ref: "Trips",
       },
     ],
   },

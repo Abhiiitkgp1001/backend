@@ -263,7 +263,7 @@ exports.postAddVehicle = async (req, res, next) => {
     if (vehicle) {
       if (vehicle.archived) {
         vehicle.archived = false;
-        vehicle.deviceId = deviceId; // device can be replaced if device is malfunctioned
+        vehicle.device = deviceId; // device can be replaced if device is malfunctioned
         vehicle.vehicleWheelType = vehicleWheelType;
         vehicle.vehicleLoadType = vehicleLoadType;
         vehicle = await vehicle.save({
@@ -281,7 +281,7 @@ exports.postAddVehicle = async (req, res, next) => {
       vehicle = new Vehicles({
         registrationNumber: registrationNumber,
         vehicleWheelType: vehicleWheelType,
-        deviceId: deviceId,
+        device: deviceId,
         vehicleLoadType: vehicleLoadType,
       });
       adminUser = await User.findByIdAndUpdate(
