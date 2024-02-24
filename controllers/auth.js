@@ -9,9 +9,11 @@ const mailer = require("../utils/sendEmail");
 // const crypto = require("crypto");
 const redisClient = require("../utils/redisClient");
 const UserDto = require("../dtos/user.dto");
-const { Storage } = require("@google-cloud/storage");
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
-
+const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
+const {
+  getSignedUrl,
+  S3RequestPresigner,
+} = require("@aws-sdk/s3-request-presigner");
 function generateOTP() {
   // Generate a random number between 100000 and 999999 (inclusive)
   const otp = Math.floor(100000 + Math.random() * 900000);
@@ -138,7 +140,7 @@ exports.postSignup = async (req, res, next) => {
         userId: user._id.toString(),
       },
       "supersecret",
-      { expiresIn: "1h" }
+      { expiresIn: "10h" }
     );
     // If all documents are successfully created, commit the transaction
     if (session.transaction != null && session.inTransaction()) {
@@ -207,7 +209,7 @@ exports.postSignin = (req, res, next) => {
           userId: user._id.toString(),
         },
         "supersecret",
-        { expiresIn: "1h" }
+        { expiresIn: "10h" }
       );
       res.status(200).json({ token: token, user: user }); // get whole user
     })
@@ -559,43 +561,36 @@ exports.getAllUsers = (req, res, next) => {
 //     });
 // };
 
-exports.get_profile = (req, res, next) => {
+exports.get_profile = async (req, res, next) => {
   const user_id = req.params.user_id;
-  // console.log("user_id:" + user_id);
-  let loadedProfile;
-  User.find({ _id: user_id }, { profile: 1 })
-    .exec()
-    .then((user) => {
-      // console.log(user[0]);
-      console.log(user[0].profile);
-      return Profile.findById(user[0].profile);
-    })
-    .then((profile) => {
-      loadedProfile = profile;
-      if (profile.profile_pic) {
-        return profile.profile_pic;
-      } else {
-        return new Promise((resolve, reject) => {
-          resolve(null);
-        });
+  try{
+    const user = await User.findById(user_id);
+    if(user){
+      let userProfile = await Profile.findById(user.profile);
+      if(userProfile){
+        const s3 = new S3Client({});
+        const getFile = new GetObjectCommand({ Bucket: process.env.BUCKET_NAME, Key: userProfile.profile_pic });
+        userProfile.profile_pic  = await getSignedUrl(s3, getFile, { expiresIn: 36000 });
+        res.status(200).json({ profile: userProfile || {} });
+      }else{
+        const error = new Error(`Profile not found`);
+        error.statusCode = 404;
+        throw error;    
       }
-    })
-    .then((signedUrl) => {
-      loadedProfile.profile_pic = signedUrl;
-      console.log(loadedProfile);
-      res.status(200).json({ profile: loadedProfile });
-    })
-    .catch((err) => {
-      console.log(err);
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
-    });
+    }else{
+      const error = new Error(`User not found`);
+      error.statusCode = 404;
+      throw error;    
+    }
+  }catch(err){
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
 exports.update_profile = async (req, res, next) => {
-  const s3 = new S3Client({});
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const err = new Error("Validation Failed");
@@ -603,237 +598,70 @@ exports.update_profile = async (req, res, next) => {
     err.data = errors.array();
     throw err;
   }
-  let filename = null;
-
-  const obj = {};
-  let fileData;
-  if (req.file) {
-    const key = `${Date.now()}_${req.file.originalname}`;
-    const command = new PutObjectCommand({
-      Bucket: process.env.BUCKET_NAME,
-      Key: key,
-      Body: req.file.buffer,
-      // ContentType: req.file.mimetype,
-    });
-    try {
-      filename = Date.now() + req.file.originalname;
-      fileData = await s3.send(command);
-
-      console.log("Profile picture uploaded successfully:", fileData.Location);
-      // Store the S3 object URL (data.Location) in your database or use it as needed
-    } catch (error) {
-      console.error("Error uploading profile picture:", error);
+  try{
+    const s3 = new S3Client({});
+    let obj = {};
+    let savedFile;
+    if (req.file) {
+      const key = `${req.params.user_id}`;
+      const putImage = new PutObjectCommand({
+        Bucket: process.env.BUCKET_NAME,
+        Key: key,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
+      });
+      savedFile = await s3.send(putImage);
+      obj.profile_pic = key;
     }
-  }
-  if (req.body.first_name) {
-    obj.first_name = req.body.first_name;
-  }
-  if (req.body.last_name) {
-    obj.last_name = req.body.last_name;
-  }
-  if (req.body.email) {
-    obj.email = req.body.email;
-  }
-  if (req.body.phone_number) {
-    obj.phone_number = req.body.phone_number;
-  }
-  if (req.body.driving_license) {
-    obj.driving_license = req.body.driving_license;
-  }
-  // if (req.body.address) {
-  //   obj.address = req.body.address;
-  // }
-  if (req.body.pancard) {
-    obj.pancard = req.body.pancard;
-  }
-  if (req.body.aadhar) {
-    obj.aadhar = req.body.aadhar;
-  }
-  if (req.file) {
-    obj.profile_pic = filename;
-  }
-  let oldFilename;
-  User.findOne({ _id: req.params.user_id })
-    .then((user) => {
-      if (!user) {
-        console.log("User not found");
-        const error = new Error(`User not found`);
-        error.statusCode = 404;
-        throw error;
-      }
-      // console.log(user);
-      return Profile.findOne({ _id: user.profile });
-    })
-    .then((profile) => {
-      if (!profile) {
-        console.log("Profile not found");
+    if (req.body.first_name) {
+      obj.first_name = req.body.first_name;
+    }
+    if (req.body.last_name) {
+      obj.last_name = req.body.last_name;
+    }
+    if (req.body.email) {
+      obj.email = req.body.email;
+    }
+    if (req.body.phone_number) {
+      obj.phone_number = req.body.phone_number;
+    }
+    if (req.body.driving_license) {
+      obj.driving_license = req.body.driving_license;
+    }
+    if (req.body.pancard) {
+      obj.pancard = req.body.pancard;
+    }
+    if (req.body.aadhar) {
+      obj.aadhar = req.body.aadhar;
+    }
+    
+    const user = await User.findById(req.params.user_id);
+    if(user){
+      let userProfile = await Profile.findById(user.profile)
+      if(userProfile){
+        userProfile = await Profile.findByIdAndUpdate(userProfile._id, obj, { new: true })
+        const getFile = new GetObjectCommand({ Bucket: process.env.BUCKET_NAME, Key: userProfile.profile_pic });
+        userProfile.profile_pic  = await getSignedUrl(s3, getFile, { expiresIn: 36000 });
+        res
+          .status(200)
+          .send({ message: "Profile Updated", profile: userProfile }); 
+      }else{
         const error = new Error(`Profile not found`);
         error.statusCode = 404;
-        throw error;
+        throw error; 
       }
-      oldFilename = profile.profile_pic;
-      return Profile.findByIdAndUpdate(profile._id, obj, { new: true });
-    })
-    .then(async (updatedProfile) => {
-      console.log(updatedProfile);
-      // if (req.file && oldFilename) {
-      //   const bucket = storageClient.bucket(bucketName);
-      //   const fileToDelete = bucket.file(oldFilename);
-      //   fileToDelete
-      //     .delete()
-      //     .then(() => {
-      //       console.log(`Deleted previous profile picture: ${oldFilename}`);
-      //     })
-      //     .catch((err) => {
-      //       console.error("Error deleting previous profile picture:", err);
-      //     });
-      // }
-      // if (updatedProfile.profile_pic) {
-      //   return updatedProfile.profile_pic;
-      //   // await generateSignedUrl(
-      //   // updatedProfile.profile_pic
-      //   // );
-      // }
-      console.log(`Updated profile picture: ${updatedProfile}`);
-      res
-        .status(200)
-        .send({ message: "Profile Updated", profile: updatedProfile }); // dend updated profilex
-    })
-    .catch((err) => {
-      console.log(err);
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
-    });
+    }else{
+      const error = new Error(`User not found`);
+      error.statusCode = 404;
+      throw error;    
+    }
+    
+  
+  }catch(err){
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
-// exports.update_profile = async (req, res, next) => {
-
-// Retrieve object from S3 bucket
-// const params = {
-//   Bucket: 'YOUR_BUCKET_NAME',
-//   Key: 'OBJECT_KEY'
-// };
-//   console.log(req.get("Content-Type"));
-//   const errors = validationResult(req);
-//   if (!errors.isEmpty()) {
-//     const err = new Error("Validation Failed");
-//     err.statusCode = 400;
-//     err.data = errors.array();
-//     throw err;
-//   }
-//   let filename = null;
-
-//   const obj = {};
-//   console.log("body", req.body);
-//   // console.log("bucketName" + req.body.file.filename);
-//   // console.log("bucketName" + { ...req.file });
-//   // for (const key in req.file) {
-//   //   console.log("key " + key);
-//   // }
-
-//   if (req.file) {
-//     console.log("file" + req.file);
-//     const bucket = storageClient.bucket(bucketName);
-//     const blob = bucket.file(Date.now() + req.file.originalname);
-//     const blobStream = blob.createWriteStream();
-
-//     blobStream.on("error", (err) => {
-//       console.error("Error uploading to GCP:", err);
-//       res
-//         .status(500)
-//         .send({ message: "Internal Server Error: Unable to Upload file to " });
-//     });
-
-//     blobStream.on("finish", () => {
-//       console.log("Finished file upload");
-//     });
-
-//     filename = blob.name;
-//     blobStream.end(req.file.buffer);
-//   }
-//   if (req.body.first_name) {
-//     obj.first_name = req.body.first_name;
-//   }
-//   if (req.body.last_name) {
-//     obj.last_name = req.body.last_name;
-//   }
-//   if (req.body.email) {
-//     obj.email = req.body.email;
-//   }
-//   if (req.body.phone_number) {
-//     obj.phone_number = req.body.phone_number;
-//   }
-//   // if (req.body.mobile_no) {
-//   //   obj.mobile_number = req.body.mobile_no;
-//   // }
-//   if (req.body.driving_license) {
-//     obj.driving_license = req.body.driving_license;
-//   }
-//   if (req.body.address) {
-//     obj.address = req.body.address;
-//   }
-//   if (req.body.pancard) {
-//     obj.pancard = req.body.pancard;
-//   }
-//   if (req.body.aadhar) {
-//     obj.aadhar = req.body.aadhar;
-//   }
-//   if (req.file) {
-//     obj.profile_pic = filename;
-//   }
-//   let oldFilename;
-//   User.findOne({ _id: req.params.user_id })
-//     .then((user) => {
-//       if (!user) {
-//         console.log("User not found");
-//         const error = new Error(`User not found`);
-//         error.statusCode = 404;
-//         throw error;
-//       }
-//       // console.log(user);
-//       return Profile.findOne({ _id: user.profile });
-//     })
-//     .then((profile) => {
-//       if (!profile) {
-//         console.log("Profile not found");
-//         const error = new Error(`Profile not found`);
-//         error.statusCode = 404;
-//         throw error;
-//       }
-//       oldFilename = profile.profile_pic;
-//       return Profile.findByIdAndUpdate(profile._id, obj, { new: true });
-//     })
-//     .then(async (updatedProfile) => {
-//       console.log(updatedProfile);
-//       if (req.file && oldFilename) {
-//         const bucket = storageClient.bucket(bucketName);
-//         const fileToDelete = bucket.file(oldFilename);
-//         fileToDelete
-//           .delete()
-//           .then(() => {
-//             console.log(`Deleted previous profile picture: ${oldFilename}`);
-//           })
-//           .catch((err) => {
-//             console.error("Error deleting previous profile picture:", err);
-//           });
-//       }
-//       if (updatedProfile.profile_pic) {
-//         updatedProfile.profile_pic = await generateSignedUrl(
-//           updatedProfile.profile_pic
-//         );
-//       }
-//       console.log(`Updated profile picture: ${updatedProfile}`);
-//       res
-//         .status(200)
-//         .send({ message: "Profile Updated", profile: updatedProfile }); // dend updated profilex
-//     })
-//     .catch((err) => {
-//       console.log(err);
-//       if (!err.statusCode) {
-//         err.statusCode = 500;
-//       }
-//       next(err);
-//     });
-// };
