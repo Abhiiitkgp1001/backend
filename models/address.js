@@ -32,6 +32,10 @@ const addressSchema = mongoose.Schema({
     maxlength: 6, // Maximum length constraint
     // match: /^[0-9]{6}$/, // Regular expression pattern constraint
   },
+  country: {
+    type: String,
+    default: "",
+  },
   // city string
   // district string
   // state string
