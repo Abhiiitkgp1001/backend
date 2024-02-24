@@ -14,8 +14,9 @@ const VehicleSchema = mongoose.Schema({
     ],
   },
   vehicleLoadType: {
-    type: Boolean, // heavy or light weight
+    type: String, // heavy or light weight
     required: true,
+    default: "LIGHT"
   },
   vehicleWheelType: {
     type: Number, // vehicle wheel type 2 , 3 more
@@ -32,6 +33,12 @@ const VehicleSchema = mongoose.Schema({
     // device
     type: mongoose.Schema.Types.ObjectId,
     ref: "Devices",
+    default: null,
+  },
+  user: {
+    // device
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Users",
     default: null,
   },
   archived: {

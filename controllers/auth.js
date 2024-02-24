@@ -3,12 +3,14 @@ const Profile = require("../models/profile");
 const { validationResult } = require("express-validator");
 const User = require("../models/user");
 const Address = require("../models/address");
+const PilotStat = require("../models/pilot_stats");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mailer = require("../utils/sendEmail");
-// const crypto = require("crypto");
+const Vehicles = require("../models/vehicle");
 const redisClient = require("../utils/redisClient");
 const UserDto = require("../dtos/user.dto");
+const Device = require("../models/device");
 const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
 const {
   getSignedUrl,
@@ -110,6 +112,7 @@ exports.postSignup = async (req, res, next) => {
     hashPass = await bcrypt.hash(password, 12);
     //create two addresses for profile
     address = new Address({});
+    
     working_address = new Address({});
     profile = new Profile({
       email: email,
@@ -517,50 +520,6 @@ exports.getAllUsers = (req, res, next) => {
     });
 };
 
-// uploading profile  image
-// const bucketName = process.env.BUCKET_NAME;
-// let projectId = process.env.PROJECT_ID;
-// let keyFilename = process.env.GCP_KEY_FILE;
-// console.log("storage creds:", bucketName, projectId, keyFilename);
-
-// console.log(
-//   process.env.AWS_ACCESS_KEY_ID,
-//   process.env.AWS_SECRET_ACCESS_KEY,
-//   process.env.REGION
-// );
-// AWS.config.update({
-//   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-//   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-//   region: process.env.REGION, // Using region code
-// });
-// const storageClient = new Storage({
-//   projectId,
-//   keyFilename,
-// });
-
-// credentials: {
-//   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-//   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-// },
-// region: process.env.REGION,
-
-// Create S3 service object
-
-// const generateSignedUrl = (fileName) => {
-//   const blob = storageClient.bucket(bucketName).file(fileName);
-
-//   return blob
-//     .getSignedUrl({
-//       action: "read",
-//       expires: Date.now() + 24 * 60 * 60 * 1000,
-//     })
-//     .then(([signedUrl]) => {
-//       console.log(`Generated Signed URL for ${fileName}`);
-//       console.log(signedUrl);
-//       return signedUrl;
-//     });
-// };
-
 exports.get_profile = async (req, res, next) => {
   const user_id = req.params.user_id;
   try{
@@ -568,9 +527,11 @@ exports.get_profile = async (req, res, next) => {
     if(user){
       let userProfile = await Profile.findById(user.profile);
       if(userProfile){
-        const s3 = new S3Client({});
-        const getFile = new GetObjectCommand({ Bucket: process.env.BUCKET_NAME, Key: userProfile.profile_pic });
-        userProfile.profile_pic  = await getSignedUrl(s3, getFile, { expiresIn: 36000 });
+        if(userProfile.profile_pic!==""){
+          const s3 = new S3Client({});
+          const getFile = new GetObjectCommand({ Bucket: process.env.BUCKET_NAME, Key: userProfile.profile_pic });
+          userProfile.profile_pic  = await getSignedUrl(s3, getFile, { expiresIn: 36000 });
+        }
         res.status(200).json({ profile: userProfile || {} });
       }else{
         const error = new Error(`Profile not found`);
