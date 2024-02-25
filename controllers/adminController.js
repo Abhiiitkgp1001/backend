@@ -249,12 +249,7 @@ exports.postAddVehicle = async (req, res, next) => {
     const vehicleLoadType = req.body.vehicleLoadType;
     const vehicleWheelType = req.body.vehicleWheelType;
     const deviceId = req.body.deviceId || null;
-    console.log(
-      registrationNumber,
-      vehicleLoadType,
-      vehicleWheelType,
-      deviceId
-    );
+  
     let adminUser;
     //get current adim user and then create vehicle and then update vehicle
     let vehicle = await Vehicles.findOne({
@@ -285,7 +280,7 @@ exports.postAddVehicle = async (req, res, next) => {
         vehicleLoadType: vehicleLoadType,
       });
       adminUser = await User.findByIdAndUpdate(
-        vehicle._id,
+        req.userId,
         {
           $push: { addedVehicles: vehicle._id },
         },

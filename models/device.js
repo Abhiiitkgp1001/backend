@@ -25,7 +25,7 @@ const DeviceSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Trips",
       },
-    ],
+    ]
   },
 });
 

@@ -14,7 +14,7 @@ const PilotStatsSchema = mongoose.Schema({
     default: 0,
   },
   online: {
-    type: mongoose.Types.Boolean,
+    type: Boolean,
     default: false,
   },
   allTrips: {

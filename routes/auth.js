@@ -201,6 +201,13 @@ router.patch(
   authController.update_profile
 );
 
+// router.post(
+//   "/test",
+//   authController.appPilots
+// );
+
+
+
 // router.get("/get_all_pilots", apiAuth, isAuth, authController.getAllPilots);
 
 module.exports = router;
