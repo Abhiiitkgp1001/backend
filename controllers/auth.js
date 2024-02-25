@@ -6,14 +6,14 @@ const Address = require("../models/address");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const mailer = require("../utils/sendEmail");
-// const crypto = require("crypto");
 const redisClient = require("../utils/redisClient");
 const UserDto = require("../dtos/user.dto");
-const { S3Client, PutObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
 const {
-  getSignedUrl,
-  S3RequestPresigner,
-} = require("@aws-sdk/s3-request-presigner");
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 function generateOTP() {
   // Generate a random number between 100000 and 999999 (inclusive)
   const otp = Math.floor(100000 + Math.random() * 900000);
@@ -111,6 +111,8 @@ exports.postSignup = async (req, res, next) => {
     //create two addresses for profile
     address = new Address({});
     working_address = new Address({});
+    await address.save({ session: session });
+    await working_address.save({ session: session });
     profile = new Profile({
       email: email,
       phone_number: phone_number,
@@ -130,8 +132,7 @@ exports.postSignup = async (req, res, next) => {
     address.profile = profile._id;
     working_address.user = user._id;
     working_address.profile = profile._id;
-    await address.save({ session: session });
-    await working_address.save({ session: session });
+
     await user.save({ session: session });
     console.log("User created successfully ", user);
     const token = jwt.sign(
@@ -563,26 +564,31 @@ exports.getAllUsers = (req, res, next) => {
 
 exports.get_profile = async (req, res, next) => {
   const user_id = req.params.user_id;
-  try{
+  try {
     const user = await User.findById(user_id);
-    if(user){
+    if (user) {
       let userProfile = await Profile.findById(user.profile);
-      if(userProfile){
+      if (userProfile) {
         const s3 = new S3Client({});
-        const getFile = new GetObjectCommand({ Bucket: process.env.BUCKET_NAME, Key: userProfile.profile_pic });
-        userProfile.profile_pic  = await getSignedUrl(s3, getFile, { expiresIn: 36000 });
+        const getFile = new GetObjectCommand({
+          Bucket: process.env.BUCKET_NAME,
+          Key: userProfile.profile_pic,
+        });
+        userProfile.profile_pic = await getSignedUrl(s3, getFile, {
+          expiresIn: 36000,
+        });
         res.status(200).json({ profile: userProfile || {} });
-      }else{
+      } else {
         const error = new Error(`Profile not found`);
         error.statusCode = 404;
-        throw error;    
+        throw error;
       }
-    }else{
+    } else {
       const error = new Error(`User not found`);
       error.statusCode = 404;
-      throw error;    
+      throw error;
     }
-  }catch(err){
+  } catch (err) {
     if (!err.statusCode) {
       err.statusCode = 500;
     }
@@ -598,7 +604,7 @@ exports.update_profile = async (req, res, next) => {
     err.data = errors.array();
     throw err;
   }
-  try{
+  try {
     const s3 = new S3Client({});
     let obj = {};
     let savedFile;
@@ -634,34 +640,38 @@ exports.update_profile = async (req, res, next) => {
     if (req.body.aadhar) {
       obj.aadhar = req.body.aadhar;
     }
-    
+
     const user = await User.findById(req.params.user_id);
-    if(user){
-      let userProfile = await Profile.findById(user.profile)
-      if(userProfile){
-        userProfile = await Profile.findByIdAndUpdate(userProfile._id, obj, { new: true })
-        const getFile = new GetObjectCommand({ Bucket: process.env.BUCKET_NAME, Key: userProfile.profile_pic });
-        userProfile.profile_pic  = await getSignedUrl(s3, getFile, { expiresIn: 36000 });
+    if (user) {
+      let userProfile = await Profile.findById(user.profile);
+      if (userProfile) {
+        userProfile = await Profile.findByIdAndUpdate(userProfile._id, obj, {
+          new: true,
+        });
+        const getFile = new GetObjectCommand({
+          Bucket: process.env.BUCKET_NAME,
+          Key: userProfile.profile_pic,
+        });
+        userProfile.profile_pic = await getSignedUrl(s3, getFile, {
+          expiresIn: 36000,
+        });
         res
           .status(200)
-          .send({ message: "Profile Updated", profile: userProfile }); 
-      }else{
+          .send({ message: "Profile Updated", profile: userProfile });
+      } else {
         const error = new Error(`Profile not found`);
         error.statusCode = 404;
-        throw error; 
+        throw error;
       }
-    }else{
+    } else {
       const error = new Error(`User not found`);
       error.statusCode = 404;
-      throw error;    
+      throw error;
     }
-    
-  
-  }catch(err){
+  } catch (err) {
     if (!err.statusCode) {
       err.statusCode = 500;
     }
     next(err);
   }
 };
-
