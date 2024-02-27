@@ -29,21 +29,19 @@ router.post(
       .trim()
       .isMobilePhone()
       .custom(async (value, { req }) => {
-        return User.findOne({ phone_number: value }).then((userDoc) => {
-          if (userDoc) {
-            return Promise.reject("Phone Number already exists!");
-          }
-        });
+        let userDoc = await User.findOne({ phone_number: value });
+        if (userDoc) {
+          return Promise.reject("Phone Number already exists!");
+        }
       }),
     body("email", "Please enter your email")
       .trim()
       .isEmail()
-      .custom((value, { req }) => {
-        return User.findOne({ email: value }).then((userDoc) => {
-          if (userDoc) {
-            return Promise.reject("User already exists!");
-          }
-        });
+      .custom(async (value, { req }) => {
+        let userDoc = await User.findOne({ email: value });
+        if (userDoc) {
+          return Promise.reject("User already exists!");
+        }
       })
       .normalizeEmail(),
     body("password").trim().notEmpty(),
@@ -69,7 +67,7 @@ router.post(
     // Use built-in isEmail and isMobilePhone validators
     // Use built-in isEmail and isMobilePhone validators
     body("user_name", "Invalid email or phone number").custom(
-      (value, { req }) => {
+      async (value, { req }) => {
         // Check if the userId is either an email or a phone number
         const emailRegex = /^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}$/;
         const phoneRegex = /^[0-9]{10}$/; // Adjust the phone number regex as needed
@@ -79,24 +77,23 @@ router.post(
           throw new Error("Invalid email or phone number!!!!");
         }
         // test if user with email or phone is not registered
-        return User.findOne({
+        let userDoc = await User.findOne({
           $or: [{ email: value }, { phone_number: value }],
-        }).then((userDoc) => {
-          console.log(!userDoc);
-          if (!userDoc) {
-            console.log("user not found");
-            return Promise.reject(
-              "User doesn't exists! with this email or phone number"
-            );
-          }
-          console.log("user exists!");
-          return true;
         });
+        console.log(!userDoc);
+        if (!userDoc) {
+          console.log("user not found");
+          return Promise.reject(
+            "User doesn't exists! with this email or phone number"
+          );
+        }
+        console.log("user exists!");
+        return true;
       }
     ),
     body(
       "password",
-      "pawword length must be between 8 to 16 and must be alphanumeric"
+      "password length must be between 8 to 16 and must be alphanumeric"
     )
       .trim()
       .notEmpty(),
@@ -128,7 +125,7 @@ router.post(
       .notEmpty()
       .isLength({ min: 8, max: 16 })
       .isAlphanumeric()
-      .custom((val, { req }) => {
+      .custom(async (val, { req }) => {
         // console.log(val);
         // console.log(req.body.password);
         if (val !== req.body.password) {
@@ -161,7 +158,7 @@ router.post(
       .notEmpty()
       // .isLength({ min: 8, max: 16 })
       .isAlphanumeric()
-      .custom((val, { req }) => {
+      .custom(async (val, { req }) => {
         if (val !== req.body.new_password) {
           return Promise.reject("Password should match");
         }
@@ -205,8 +202,6 @@ router.patch(
 //   "/test",
 //   authController.appPilots
 // );
-
-
 
 // router.get("/get_all_pilots", apiAuth, isAuth, authController.getAllPilots);
 

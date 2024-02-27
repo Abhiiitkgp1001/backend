@@ -10,42 +10,37 @@ const mailer = require("../utils/sendEmail");
 const crypto = require("crypto");
 const redisClient = require("../utils/redisClient");
 const UserDto = require("../dtos/user.dto");
-const { throws } = require("assert");
+// const { throws } = require("assert");
 
-exports.postLockAccount = (req, res, next) => {
-  const pilotId = req.body.pilotId;
-  User.findById(req.pilotId)
-    .then((pilot) => {
-      pilot.lock_account = true;
-      return pilot.save();
-    })
-    .then((savedPilot) => {
-      res.status(200).json({
-        message: "Pilot Acount Locked",
-      });
-    })
-    .catch((err) => {
-      err.statusCode = err.statusCode || 500;
-      next(err);
+exports.postLockAccount = async (req, res, next) => {
+  try {
+    const pilotId = req.body.pilotId;
+    let pilot = await User.findById(pilotId);
+    pilot.lock_account = true;
+    await pilot.save();
+    res.status(200).json({
+      message: "Pilot Acount Locked",
     });
+  } catch (err) {
+    console.log(err);
+    err.statusCode = err.statusCode || 500;
+    next(err);
+  }
 };
 
-exports.postUnlockAccount = (req, res, next) => {
+exports.postUnlockAccount = async (req, res, next) => {
   const pilotId = req.body.pilotId;
-  User.findById(req.pilotId)
-    .then((pilot) => {
-      pilot.lock_account = false;
-      return pilot.save();
-    })
-    .then((savedPilot) => {
-      res.status(200).json({
-        message: "Pilot Acount Unlocked",
-      });
-    })
-    .catch((err) => {
-      err.statusCode = err.statusCode || 500;
-      next(err);
+  try {
+    let pilot = await User.findById(pilotId);
+    pilot.lock_account = false;
+    await pilot.save();
+    res.status(200).json({
+      message: "Pilot Acount Unlocked",
     });
+  } catch (err) {
+    err.statusCode = err.statusCode || 500;
+    next(err);
+  }
 };
 
 exports.postCreatePilot = async (req, res, next) => {
@@ -146,30 +141,25 @@ exports.postCreatePilot = async (req, res, next) => {
   }
 };
 
-exports.getAllPilots = (req, res, next) => {
+exports.getAllPilots = async (req, res, next) => {
   //   console.log("getAllPilots");
-  User.findById(req.userId)
-    .then((user) => {
-      return user.populate({
-        path: "childUsers",
-        populate: {
-          path: "profile", // Assuming 'profile' is a field in the 'User' model referencing the 'Profile' model
-        },
-      });
-    })
-    .then((user_populated) => {
-      let allPilots = user_populated.childUsers;
-      allPilots = allPilots.filter((pilot) => pilot.archived === false);
-      res.status(200).json({
-        pilots: allPilots,
-      });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+  try {
+    let allPilots = await User.findById(req.userId).populate({
+      path: "childUsers",
+      populate: {
+        path: "profile", // Assuming 'profile' is a field in the 'User' model referencing the 'Profile' model
+        path: "pilotStats", // populate pilot stats
+      },
+    }).childUsers;
+    res.status(200).json({
+      pilots: allPilots,
     });
+  } catch (err) {
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
 exports.removePilot = async (req, res, next) => {
@@ -237,8 +227,6 @@ exports.removePilot = async (req, res, next) => {
   }
 };
 
-// vehicle linkings
-
 //link vehicle to admin
 exports.postAddVehicle = async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -249,7 +237,7 @@ exports.postAddVehicle = async (req, res, next) => {
     const vehicleLoadType = req.body.vehicleLoadType;
     const vehicleWheelType = req.body.vehicleWheelType;
     const deviceId = req.body.deviceId || null;
-  
+
     let adminUser;
     //get current adim user and then create vehicle and then update vehicle
     let vehicle = await Vehicles.findOne({
@@ -390,31 +378,25 @@ exports.deleteVehicle = async (req, res, next) => {
 };
 
 //get all vehicles for an admin
-exports.getAllVehicles = (req, res, next) => {
+exports.getAllVehicles = async (req, res, next) => {
   //   console.log("getAllPilots");
-  User.findById(req.userId)
-    .then((user) => {
-      return user.populate({
-        path: "addedVehicles",
-        populate: {
-          path: "device",
-          path: "linkedPilots", // Assuming 'deviceId' is a field in the 'User' model referencing the 'Devices' model
-        },
-      });
-    })
-    .then((user_populated) => {
-      let allVehicles = user_populated.addedVehicles;
-      // allVehicles = allVehicles.filter((vehicle) => pilot.archived === false);
-      res.status(200).json({
-        vehicles: allVehicles,
-      });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+  try {
+    let allVehicles = await User.findById(req.userId).populate({
+      path: "addedVehicles",
+      populate: {
+        path: "device",
+        path: "linkedPilots", // Assuming 'deviceId' is a field in the 'User' model referencing the 'Devices' model
+      },
+    }).addedVehicles;
+    res.status(200).json({
+      vehicles: allVehicles,
     });
+  } catch (err) {
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
 exports.postAssignPilot = async (req, res, next) => {

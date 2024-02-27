@@ -10,8 +10,6 @@ const mailer = require("../utils/sendEmail");
 const redisClient = require("../utils/redisClient");
 const UserDto = require("../dtos/user.dto");
 const Vehicles = require("../models/vehicle");
-const redisClient = require("../utils/redisClient");
-const UserDto = require("../dtos/user.dto");
 const Device = require("../models/device");
 const {
   S3Client,
@@ -20,61 +18,62 @@ const {
 } = require("@aws-sdk/client-s3");
 
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+
 function generateOTP() {
   // Generate a random number between 100000 and 999999 (inclusive)
   const otp = Math.floor(100000 + Math.random() * 900000);
   return otp.toString(); // Convert the number to a string
 }
 
-exports.postSignUpInitiate = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const err = new Error("Validation Failed");
-    err.statusCode = 400;
-    err.data = errors.array();
-    throw err;
-  }
-
-  console.log(`${req.body.email}_${req.body.type}_${req.body.machine_id}`);
-  let Otp;
-  User.findOne({ email: req.body.email, phone_number: req.body.phone_number })
-    .then((user) => {
-      if (user) {
-        // res.status(409).json({ message: "User already exists!" });
-        const error = new Error("User already exists!");
-        error.statusCode = 409;
-        throw error;
-      }
-      // if user doesnt exists send with given email and phone send Otp on email
-      Otp = generateOTP();
-      // set otp to cache for later verification
-      console.log(Otp);
-      return redisClient.set(
-        req.body.email + "_" + req.body.type + "_" + req.body.machine_id,
-        Otp,
-        "EX",
-        60
-      );
-    })
-    .then((result) => {
-      console.log(result);
-      if (!result) {
-        const error = new Error("Otp service error");
-        error.statusCode = 503;
-        throw error;
-      }
-      return mailer.sendSignUpOtp(req.body.email, Otp);
-    })
-    .then((info) => {
-      console.log("Mail sent for Otp: " + info.messageId);
-      res.status(200).json({ message: "Otp has been sent to your Email" });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+exports.postSignUpInitiate = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const err = new Error("Validation Failed");
+      err.statusCode = 400;
+      err.data = errors.array();
+      throw err;
+    }
+    console.log(`${req.body.email}_${req.body.type}_${req.body.machine_id}`);
+    let Otp;
+    let user = await User.findOne({
+      $or: [{ email: req.body.email }, { phone_number: req.body.phone_number }],
     });
+    if (user) {
+      const error = new Error("User already exists!");
+      error.statusCode = 409;
+      throw error;
+    }
+    // if user doesnt exists send with given email and phone send Otp on email
+    Otp = generateOTP();
+    // set otp to cache for later verification
+    console.log(Otp);
+    let otpRes = await redisClient.set(
+      req.body.email + "_" + req.body.type + "_" + req.body.machine_id,
+      Otp,
+      "EX",
+      60
+    );
+    console.log(otpRes);
+    if (!otpRes) {
+      const error = new Error("Otp service error");
+      error.statusCode = 503;
+      throw error;
+    }
+    const mailInfo = await mailer.sendSignUpOtp(req.body.email, Otp);
+    if (!mailInfo) {
+      const error = new Error("Otp Email  service error");
+      error.statusCode = 503;
+      throw error;
+    }
+    console.log("Mail sent for Otp: " + mailInfo.messageId);
+    res.status(200).json({ message: "Otp has been sent to your Email" });
+  } catch (err) {
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
 exports.postSignup = async (req, res, next) => {
@@ -180,349 +179,331 @@ exports.postSignup = async (req, res, next) => {
   }
 };
 
-exports.postSignin = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const err = new Error("Validation Failed");
-    err.statusCode = 400;
-    err.data = errors.array();
-    throw err;
-  }
-  const user_name = req.body.user_name;
-  const password = req.body.password;
-  let user;
-  //check if password matches if not return with
-  User.findOne({
-    $or: [{ email: user_name }, { phone_number: user_name }],
-  })
-    .then((userDoc) => {
-      user = userDoc;
-      if (user.accountLock) {
-        // handle if user account is locked so cant sign in
-        const err = new Error("Account Locked");
-        err.statusCode = 400;
-        throw err;
-      }
-      return bcrypt.compare(password, user.password);
-    })
-    .then((isEqual) => {
-      if (!isEqual) {
-        const error = new Error("Wrong password");
-        error.statusCode = 401;
-        throw error;
-      }
-      const token = jwt.sign(
-        {
-          email: user.email,
-          userId: user._id.toString(),
-        },
-        "supersecret",
-        { expiresIn: "10h" }
-      );
-      res.status(200).json({ token: token, user: user }); // get whole user
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-
-      next(err);
-    });
-};
-
-exports.postForgotPassword = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const err = new Error("Validation Failed");
-    err.statusCode = 400;
-    err.data = errors.array();
-    throw err;
-  }
-  let loadedUser;
-  let Otp;
-  User.findOne({ email: req.body.email })
-    .then((user) => {
-      if (!user) {
-        //   res.status(404).json({ message: "User not found" });
-        const error = new Error("User Not Found with this Email");
-        error.statusCode = 404;
-        throw error;
-      }
-      loadedUser = user;
-      // Generate a unique reset token
-      Otp = generateOTP();
-      //   set otp to cache
-      console.log(Otp);
-      return redisClient.set(
-        req.body.email + "_" + req.body.type + "_" + req.body.machine_id,
-        Otp,
-        "EX",
-        60
-      );
-    })
-    .then((result) => {
-      if (!result) {
-        const error = new Error("Otp service error");
-        error.statusCode = 503;
-        throw error;
-      }
-      mailer
-        .sendResetPasswordOtp(loadedUser.email, Otp)
-        .then((mailInfo) => {
-          if (!mailInfo) {
-            //   res.status(404).json({ message: "mail could not be sent" });
-            const error = new Error("Mail couldnt be sent To User Email Id");
-            error.statusCode = 503;
-            throw error;
-          }
-        })
-        .catch((error) => {
-          console.log(error);
-        });
-
-      res.status(200).json({
-        message:
-          "Password Reset Otp has been sent to your Registered email address",
-      });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
-    });
-};
-
-// exports.getResetPassword = (req, res, next) => {};
-
-exports.postResetPassword = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const err = new Error("Validation Failed");
-    err.statusCode = 400;
-    err.data = errors.array();
-    throw err;
-  }
-  console.log("email: ", req.body.email);
-  let loadedUser;
-  redisClient
-    .get(req.body.email + "_" + req.body.type + "_" + req.body.machine_id)
-    .then((otp) => {
-      console.log(otp);
-      if (!otp) {
-        // res.status(403).json({ message: "Otp No longer valid" });
-        const error = new Error("Otp No longer valid");
-        error.statusCode = 403;
-        throw error;
-      } else if (otp !== req.body.otp) {
-        //   res.status(400).json({ message: "Otp did not match" });
-        console.log(req.body.otp);
-        const error = new Error("Otp did not match");
-        error.statusCode = 400;
-        throw error;
-      }
-      return User.findOne({
-        email: req.body.email,
-      });
-    })
-    .then((user) => {
-      if (!user) {
-        //   res.status(404).json({ message: "User not found" });
-        const error = new Error("User Not Found with this Email");
-        error.statusCode = 404;
-        throw error;
-      }
-      loadedUser = user;
-      return bcrypt.hash(req.body.password, 12);
-    })
-    .then((hashedPass) => {
-      loadedUser.password = hashedPass;
-      return loadedUser.save();
-    })
-    .then((savedUser) => {
-      console.log(`Password changed: ${savedUser}`);
-      res.status(200).json({ message: "Password changed successfully" });
-    })
-    .catch((err) => {
-      console.log(`Error: ${err}`);
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
-    });
-};
-
-exports.postChangePassword = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const err = new Error("Validation Error: ");
-    err.statusCode = 400;
-    err.data = errors.array();
-    throw err;
-  }
-  let loadedUser;
-  redisClient
-    .get(req.body.email + "_" + req.body.type + "_" + req.body.machine_id)
-    .then((otp) => {
-      if (!otp) {
-        const err = new Error("Otp no longer valid");
-        err.statusCode = 503;
-        throw err;
-      } else if (otp !== req.body.otp) {
-        const err = new Error("Otp not valid ");
-        err.statusCode = 400;
-        throw err;
-      }
-      // find user by id in req
-      return User.findOne({ _id: req.userId });
-    })
-    .then((user) => {
-      loadedUser = user;
-      const old_password = req.body.old_password;
-      return bcrypt.compare(old_password, user.password);
-    })
-    .then((isEqual) => {
-      if (!isEqual) {
-        res.status(403).json({
-          message: "Please Enter Your old Password Correct",
-        });
-      }
-      return bcrypt.hash(req.body.new_password);
-    })
-    .then((hashedPassword) => {
-      loadedUser.password = hashedPassword;
-      return loadedUser.save();
-    })
-    .then((savedUser) => {
-      console.log(`Password changed: ${savedUser}`);
-      res.status(200).json({ message: "Password changed successfully" });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
-    });
-};
-
-exports.postGenerateOtp = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const err = new Error("Validation Error: ");
-    err.statusCode = 400;
-    err.data = errors.array();
-    throw err;
-  }
-  const email = req.body.email;
-  const type = req.body.type;
-  const machine_id = req.body.machine_id;
-  let otp = generateOTP();
-
-  redisClient
-    .set(email + "_" + type + "_" + machine_id, otp, "EX", 60)
-    .then((result) => {
-      if (!result) {
-        const error = new Error("Otp Service Error: ");
-        error.statusCode = 503;
-        throw error;
-      }
-      mailer
-        .sendSignUpOtp(req.body.email, Otp)
-        .then((info) => {
-          console.log("Mail sent for Otp: " + info.messageId);
-        })
-        .catch((err) => {
-          console.log(`Error Sending Mail: ${err.message}`);
-        });
-      res.status(200).json({ message: "Otp has been sent to your Email" });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
-    });
-};
-exports.postVerifyToken = (req, res, next) => {
-  let decodedToken;
+exports.postSignin = async (req, res, next) => {
   try {
-    decodedToken = jwt.verify(req.body.token, "supersecret");
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const err = new Error("Validation Failed");
+      err.statusCode = 400;
+      err.data = errors.array();
+      throw err;
+    }
+    const user_name = req.body.user_name;
+    const password = req.body.password;
+    let user = await User.findOne({
+      $or: [{ email: user_name }, { phone_number: user_name }],
+    });
+    if (user.accountLock) {
+      // handle if user account is locked so cant sign in
+      const err = new Error("Account Locked");
+      err.statusCode = 400;
+      throw err;
+    }
+    // compare password
+    let passMatch = await bcrypt.compare(password, user.password);
+    if (!passMatch) {
+      const error = new Error("Wrong password");
+      error.statusCode = 401;
+      throw error;
+    }
+    const token = jwt.sign(
+      {
+        email: user.email,
+        userId: user._id.toString(),
+      },
+      "supersecret",
+      { expiresIn: "10h" }
+    );
+    res.status(200).json({ token: token, user: user }); // get whole user
   } catch (err) {
-    err.statusCode = 500;
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
     next(err);
   }
-  if (!decodedToken) {
-    const error = new Error("User not authenticated");
-    error.statusCode = 401;
-    next(error);
+};
+
+exports.postForgotPassword = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const err = new Error("Validation Failed");
+      err.statusCode = 400;
+      err.data = errors.array();
+      throw err;
+    }
+    let user = await User.findOne({ email: req.body.email });
+    if (!user) {
+      //   res.status(404).json({ message: "User not found" });
+      const error = new Error("User Not Found with this Email");
+      error.statusCode = 404;
+      throw error;
+    }
+    // Generate a unique reset token
+    let otp = generateOTP();
+    //   set otp to cache
+    console.log(otp);
+
+    let otpRes = await redisClient.set(
+      req.body.email + "_" + req.body.type + "_" + req.body.machine_id,
+      otp,
+      "EX",
+      60
+    );
+    if (!otpRes) {
+      const error = new Error("Otp service error");
+      error.statusCode = 503;
+      throw error;
+    }
+    let mailInfo = await mailer.sendResetPasswordOtp(user.email, otp);
+    if (!mailInfo) {
+      //   res.status(404).json({ message: "mail could not be sent" });
+      const error = new Error("Mail couldnt be sent To User Email Id");
+      error.statusCode = 503;
+      throw error;
+    }
+    res.status(200).json({
+      message:
+        "Password Reset Otp has been sent to your Registered email address",
+    });
+  } catch (err) {
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
   }
-  const userId = decodedToken.userId;
-  User.findOne({ _id: userId })
-    .then((user) => {
-      console.log(user);
-      user = UserDto.user(user);
-      res.status(200).json({
-        user: user,
+};
+
+
+
+exports.postResetPassword = async (req, res, next) => {
+  try {
+    // Start a MongoDB transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const err = new Error("Validation Failed");
+      err.statusCode = 400;
+      err.data = errors.array();
+      throw err;
+    }
+    console.log("email: ", req.body.email);
+    let otp = await redisClient.get(
+      req.body.email + "_" + req.body.type + "_" + req.body.machine_id
+    );
+    if (!otp) {
+      // res.status(403).json({ message: "Otp No longer valid" });
+      const error = new Error("Otp No longer valid");
+      error.statusCode = 403;
+      throw error;
+    } else if (otp !== req.body.otp) {
+      //   res.status(400).json({ message: "Otp did not match" });
+      console.log(req.body.otp);
+      const error = new Error("Otp did not match");
+      error.statusCode = 400;
+      throw error;
+    }
+    let user = await User.findOne({
+      email: req.body.email,
+    });
+    if (!user) {
+      //   res.status(404).json({ message: "User not found" });
+      const error = new Error("User Not Found with this Email");
+      error.statusCode = 404;
+      throw error;
+    }
+    let hashedPass = await bcrypt.hash(req.body.password, 12);
+    user.password = hashedPass;
+    user = await user.save({ session: session });
+
+    // If all documents are successfully created, commit the transaction
+    if (session.transaction != null && session.inTransaction()) {
+      await session.commitTransaction();
+    }
+    await session.endSession();
+    console.log(`Password changed: ${user}`);
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (err) {
+    console.log(`Error: ${err}`);
+    // If an error occurs, abort the transaction and handle the error
+    try {
+      if (session.transaction != null && session.inTransaction()) {
+        await session.abortTransaction();
+      }
+      await session.endSession();
+      console.error("Transaction aborted:", err);
+    } catch (abortError) {
+      // Handle the case where aborting the transaction fails
+      console.error("Error aborting transaction:", abortError);
+    }
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
+};
+
+exports.postChangePassword = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const err = new Error("Validation Error: ");
+      err.statusCode = 400;
+      err.data = errors.array();
+      throw err;
+    }
+    let otp = await redisClient.get(
+      req.body.email + "_" + req.body.type + "_" + req.body.machine_id
+    );
+    if (!otp) {
+      const err = new Error("Otp no longer valid");
+      err.statusCode = 503;
+      throw err;
+    } else if (otp !== req.body.otp) {
+      const err = new Error("Otp not valid ");
+      err.statusCode = 400;
+      throw err;
+    }
+    // find user by id in req
+    let user = await User.findOne({ _id: req.userId });
+    let old_password = req.body.old_password;
+    let passMatch = await bcrypt.compare(old_password, user.password);
+    if (!passMatch) {
+      res.status(403).json({
+        message: "Please Enter Your old Password Correct",
       });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
-    });
+    }
+    let newPass = await bcrypt.hash(req.body.new_password, 12);
+    user.password = newPass;
+    await user.save();
+    console.log(`Password changed: ${user}`);
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (err) {
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
-exports.getUser = (req, res) => {
-  User.findOne({ _id: req.UserId })
-    .populate({
+exports.postGenerateOtp = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const err = new Error("Validation Error: ");
+      err.statusCode = 400;
+      err.data = errors.array();
+      throw err;
+    }
+    const email = req.body.email;
+    const type = req.body.type;
+    const machine_id = req.body.machine_id;
+    let otp = generateOTP();
+    let otpRes = await redisClient.set(
+      email + "_" + type + "_" + machine_id,
+      otp,
+      "EX",
+      60
+    );
+    if (!otpRes) {
+      const error = new Error("Otp Service Error: ");
+      error.statusCode = 503;
+      throw error;
+    }
+    let info = await mailer.sendSignUpOtp(req.body.email, otp);
+    if (!info) {
+      const error = new Error("Otp Mail Service Error: ");
+      error.statusCode = 503;
+      throw error;
+    }
+    console.log("Mail sent for Otp: " + info.messageId);
+    res.status(200).json({ message: "Otp has been sent to your Email" });
+  } catch (err) {
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
+};
+
+// verify token validity
+exports.postVerifyToken = async (req, res, next) => {
+  try {
+    let decodedToken;
+    decodedToken = jwt.verify(req.body.token, "supersecret");
+    if (!decodedToken) {
+      const error = new Error("User not authenticated");
+      error.statusCode = 401;
+      next(error);
+    }
+    const userId = decodedToken.userId;
+    let user = await User.findOne({ _id: userId });
+    user = UserDto.user(user);
+    res.status(200).json({
+      user: user,
+    });
+  } catch (err) {
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
+};
+
+exports.getUser = async (req, res, next) => {
+  try {
+    let user = await User.findOne({ _id: req.UserId }).populate({
       path: "profile",
-    })
-    .then((user) => {
-      user = UserDto.user(user);
-      res.status(200).json({ user: user });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
     });
+    user = UserDto.user(user);
+    res.status(200).json({ user: user });
+  } catch (err) {
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
-exports.postValidateOtp = (req, res, next) => {
-  // req.body.otp;
-  redisClient
-    .get(req.body.email + "_" + req.body.type + "_" + req.body.machine_id)
-    .then((otp) => {
-      console.log(otp);
-      if (!otp) {
-        // res.status(403).json({ message: "Otp No longer valid" });
-        const error = new Error("Otp No longer valid");
-        error.statusCode = 403;
-        throw error;
-      } else if (otp !== req.body.otp) {
-        //   res.status(400).json({ message: "Otp did not match" });
-        console.log(req.body.otp);
-        const error = new Error("Otp did not match");
-        error.statusCode = 400;
-        throw error;
-      }
-      res.status(200).json({ message: "Otp Matched" });
-    });
+exports.postValidateOtp = async (req, res, next) => {
+  try {
+    let otp = await redisClient.get(
+      req.body.email + "_" + req.body.type + "_" + req.body.machine_id
+    );
+    console.log(otp);
+    if (!otp) {
+      // res.status(403).json({ message: "Otp No longer valid" });
+      const error = new Error("Otp No longer valid");
+      error.statusCode = 403;
+      throw error;
+    } else if (otp !== req.body.otp) {
+      //   res.status(400).json({ message: "Otp did not match" });
+      console.log(req.body.otp);
+      const error = new Error("Otp did not match");
+      error.statusCode = 400;
+      throw error;
+    }
+    res.status(200).json({ message: "Otp Matched" });
+  } catch (err) {
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
-exports.getAllUsers = (req, res, next) => {
-  User.find()
-    .then((users) => {
-      res.status(200).json({ users: users });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
-    });
+exports.getAllUsers = async (req, res, next) => {
+  try {
+    let users = await User.find();
+    res.status(200).json({ users: users });
+  } catch (err) {
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
 exports.get_profile = async (req, res, next) => {
