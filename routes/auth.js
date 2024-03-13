@@ -1,12 +1,26 @@
-const express = require("express");
-const User = require("../models/user");
-const { body } = require("express-validator");
-const authController = require("../controllers/auth");
+import express from "express";
+import { body } from "express-validator";
+import multer from "multer";
+import {
+  getAllUsers,
+  getProfile,
+  getUser,
+  postChangePassword,
+  postForgotPassword,
+  postGenerateOtp,
+  postResetPassword,
+  postSignUpInitiate,
+  postSignin,
+  postSignup,
+  postValidateOtp,
+  postVerifyToken,
+  updateProfile,
+} from "../controllers/auth.js";
+import apiAuth from "../middlewares/apiEndPointAuth.js";
+import { isAuth } from "../middlewares/auth.js";
+import User from "../models/user.js";
+
 const router = express.Router();
-const isAuth = require("../middlewares/auth");
-const apiAuth = require("../middlewares/apiEndPointAuth");
-const auth_data_controller = require("../controllers/auth.js");
-const multer = require("multer");
 const upload = multer();
 
 router.post(
@@ -18,7 +32,7 @@ router.post(
       .isMobilePhone(),
     body("email", "Please enter your email").trim().isEmail(),
   ],
-  authController.postSignUpInitiate
+  postSignUpInitiate
 );
 
 router.post(
@@ -57,7 +71,7 @@ router.post(
         return true;
       }),
   ],
-  authController.postSignup
+  postSignup
 );
 
 router.post(
@@ -100,14 +114,14 @@ router.post(
     // .isLength({ min: 8, max: 16 })
     // .isAlphanumeric(),
   ],
-  authController.postSignin
+  postSignin
 );
 
 router.post(
   "/forgot_password",
   apiAuth,
   [body("email", "please enter valid email").isEmail()],
-  authController.postForgotPassword
+  postForgotPassword
 );
 
 router.post(
@@ -135,7 +149,7 @@ router.post(
         return true;
       }),
   ],
-  authController.postResetPassword
+  postResetPassword
 );
 
 router.post(
@@ -164,45 +178,33 @@ router.post(
         }
       }),
   ],
-  authController.postChangePassword
+  postChangePassword
 );
 
 router.post(
   "/generate_otp",
   apiAuth,
   [body("email").trim().isEmail()],
-  authController.postGenerateOtp
+  postGenerateOtp
 );
 
-router.post("/validate_otp", apiAuth, authController.postValidateOtp);
+router.post("/validate_otp", apiAuth, postValidateOtp);
 
-router.get("/get_user", apiAuth, isAuth, authController.getUser);
+router.get("/get_user", apiAuth, isAuth, getUser);
 
-router.post("/verify_token", apiAuth, authController.postVerifyToken);
+router.post("/verify_token", apiAuth, postVerifyToken);
 
-router.get("/all_users", apiAuth, authController.getAllUsers);
+router.get("/all_users", apiAuth, getAllUsers);
 
-// router.post("/create_pilot", apiAuth, isAuth, authController.postCreatePilot);
-router.get(
-  "/get_profile/:user_id",
-  apiAuth,
-  isAuth,
-  authController.get_profile
-);
+// router.post("/create_pilot", apiAuth, isAuth, postCreatePilot);
+router.get("/get_profile/:user_id", apiAuth, isAuth, getProfile);
 
 router.patch(
   "/update_profile/:user_id",
   apiAuth,
   isAuth,
   upload.single("file"),
-  authController.update_profile
+  updateProfile
 );
 
-// router.post(
-//   "/test",
-//   authController.appPilots
-// );
-
-// router.get("/get_all_pilots", apiAuth, isAuth, authController.getAllPilots);
-
-module.exports = router;
+export default router;

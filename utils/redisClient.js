@@ -1,6 +1,4 @@
-// const Redis = require("ioredis");
-// import { createClient } from "redis";
-const Redis = require("redis");
+import Redis from "redis";
 
 // Create a Redis client instance with your Redis Labs credentials
 const redisClient = Redis.createClient({
@@ -10,14 +8,6 @@ const redisClient = Redis.createClient({
     port: 14666,
   },
 });
-
-// new Redis({
-//   password: "FmjPi2kB6Jz2CpnO0Q2sW5k2HCe9kQGO",
-//   socket: {
-//     host: "redis-19452.c62.us-east-1-4.ec2.cloud.redislabs.com",
-//     port: 19452,
-//   },
-// });
 
 // Handle connection events (optional)
 redisClient.on("connect", () => {
@@ -29,12 +19,4 @@ redisClient.on("error", (error) => {
 });
 
 // Export the Redis client to use it in other parts of your application
-module.exports = redisClient;
-
-// const client = createClient({
-//   password: "FmjPi2kB6Jz2CpnO0Q2sW5k2HCe9kQGO",
-//   socket: {
-//     host: "redis-19452.c62.us-east-1-4.ec2.cloud.redislabs.com",
-//     port: 19452,
-//   },
-// });
+export default redisClient;

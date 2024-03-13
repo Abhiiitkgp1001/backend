@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const ProfileSchema = new mongoose.Schema({
   first_name: {
@@ -59,4 +59,4 @@ const ProfileSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("Profiles", ProfileSchema);
+export default mongoose.model("Profiles", ProfileSchema);

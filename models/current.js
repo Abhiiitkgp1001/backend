@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const CurrentSchema = new mongoose.Schema({
   // current_id: {
@@ -31,4 +31,4 @@ const CurrentSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("Currents", CurrentSchema);
+export default mongoose.model("Currents", CurrentSchema);

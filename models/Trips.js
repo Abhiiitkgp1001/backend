@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const SessionSchema = new mongoose.Schema({
   device_id: {
@@ -32,4 +32,4 @@ const SessionSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("Trips", SessionSchema);
+export default mongoose.model("Trips", SessionSchema);

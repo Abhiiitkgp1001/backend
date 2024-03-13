@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const LocationSchema = mongoose.Schema({
   street: {
@@ -9,10 +9,7 @@ const LocationSchema = mongoose.Schema({
     type: String,
     default: "",
   },
-  city: {
-    type: String,
-    default: "",
-  },
+
   district: {
     type: String,
     default: "",
@@ -27,4 +24,4 @@ const LocationSchema = mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("Locations", LocationSchema);
+export default mongoose.model("Locations", LocationSchema);

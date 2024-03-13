@@ -1,23 +1,18 @@
-const mongoose = require("mongoose");
-const Profile = require("../models/profile");
-const { validationResult } = require("express-validator");
-const User = require("../models/user");
-const Address = require("../models/address");
-const PilotStat = require("../models/pilot_stats");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const mailer = require("../utils/sendEmail");
-const redisClient = require("../utils/redisClient");
-const UserDto = require("../dtos/user.dto");
-const Vehicles = require("../models/vehicle");
-const Device = require("../models/device");
-const {
-  S3Client,
-  PutObjectCommand,
+import {
   GetObjectCommand,
-} = require("@aws-sdk/client-s3");
-
-const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import UserDto from "../dtos/user.dto.js";
+import Address from "../models/address.js";
+import Profile from "../models/profile.js";
+import User from "../models/user.js";
+import redisClient from "../utils/redisClient.js";
+import mailer from "../utils/sendEmail.js";
+import { postData } from "../wrappers/postController.js";
 
 function generateOTP() {
   // Generate a random number between 100000 and 999999 (inclusive)
@@ -25,15 +20,8 @@ function generateOTP() {
   return otp.toString(); // Convert the number to a string
 }
 
-exports.postSignUpInitiate = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      const err = new Error("Validation Failed");
-      err.statusCode = 400;
-      err.data = errors.array();
-      throw err;
-    }
+const postSignUpInitiate = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
     console.log(`${req.body.email}_${req.body.type}_${req.body.machine_id}`);
     let Otp;
     let user = await User.findOne({
@@ -67,36 +55,22 @@ exports.postSignUpInitiate = async (req, res, next) => {
       throw error;
     }
     console.log("Mail sent for Otp: " + mailInfo.messageId);
-    res.status(200).json({ message: "Otp has been sent to your Email" });
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 200,
+      data: { message: "Otp has been sent to your Email" },
+    };
+  };
+  postData(req, res, next, body);
 };
 
-exports.postSignup = async (req, res, next) => {
-  console.log(`${req.body.email}_${req.body.type}_${req.body.machine_id}`);
-
-  const email = req.body.email;
-  const phone_number = req.body.phone_number;
-  const password = req.body.password;
-  const admin = req.body.admin;
-  let hashPass, address, working_address, profile, user;
-
-  // Start a MongoDB transaction
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      const err = new Error("Validation Failed");
-      err.statusCode = 409;
-      err.data = errors.array();
-      throw err;
-    }
-
+const postSignup = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    console.log(`${req.body.email}_${req.body.type}_${req.body.machine_id}`);
+    const email = req.body.email;
+    const phone_number = req.body.phone_number;
+    const password = req.body.password;
+    const admin = req.body.admin;
+    let hashPass, address, working_address, profile, user;
     const otp = await redisClient.get(
       req.body.email + "_" + req.body.type + "_" + req.body.machine_id
     );
@@ -126,7 +100,7 @@ exports.postSignup = async (req, res, next) => {
       working_address: working_address._id,
     });
     console.log(profile._id);
-    await profile.save({ session: session });
+    profile = await profile.save({ session: session });
     user = new User({
       email: email,
       phone_number: phone_number,
@@ -138,8 +112,11 @@ exports.postSignup = async (req, res, next) => {
     address.profile = profile._id;
     working_address.user = user._id;
     working_address.profile = profile._id;
-
-    await user.save({ session: session });
+    await address.save({ session: session });
+    await working_address.save({ session: session });
+    user = await user.save({ session: session });
+    profile.user = user._id;
+    profile = await profile.save({ session: session });
     console.log("User created successfully ", user);
     const token = jwt.sign(
       {
@@ -149,50 +126,26 @@ exports.postSignup = async (req, res, next) => {
       "supersecret",
       { expiresIn: "10h" }
     );
-    // If all documents are successfully created, commit the transaction
-    if (session.transaction != null && session.inTransaction()) {
-      await session.commitTransaction();
-    }
-    await session.endSession();
-    res.status(201).json({
-      message: "User SignedUp successfully",
-      user: user,
-      token: token,
-    });
-  } catch (err) {
-    console.log(`Error while creating new User ${err}`);
-    // If an error occurs, abort the transaction and handle the error
-    try {
-      if (session.transaction != null && session.inTransaction()) {
-        await session.abortTransaction();
-      }
-      await session.endSession();
-      console.error("Transaction aborted:", err);
-    } catch (abortError) {
-      // Handle the case where aborting the transaction fails
-      console.error("Error aborting transaction:", abortError);
-    }
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 201,
+      data: {
+        message: "User SignedUp successfully",
+        user: user,
+        token: token,
+      },
+    };
+  };
+  postData(req, res, next, body);
 };
 
-exports.postSignin = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      const err = new Error("Validation Failed");
-      err.statusCode = 400;
-      err.data = errors.array();
-      throw err;
-    }
+const postSignin = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
     const user_name = req.body.user_name;
     const password = req.body.password;
     let user = await User.findOne({
       $or: [{ email: user_name }, { phone_number: user_name }],
     });
+    console.log(user);
     if (user.accountLock) {
       // handle if user account is locked so cant sign in
       const err = new Error("Account Locked");
@@ -214,24 +167,16 @@ exports.postSignin = async (req, res, next) => {
       "supersecret",
       { expiresIn: "10h" }
     );
-    res.status(200).json({ token: token, user: user }); // get whole user
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 200,
+      data: { token: token, user: user },
+    };
+  };
+  postData(req, res, next, body);
 };
 
-exports.postForgotPassword = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      const err = new Error("Validation Failed");
-      err.statusCode = 400;
-      err.data = errors.array();
-      throw err;
-    }
+const postForgotPassword = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
     let user = await User.findOne({ email: req.body.email });
     if (!user) {
       //   res.status(404).json({ message: "User not found" });
@@ -262,33 +207,19 @@ exports.postForgotPassword = async (req, res, next) => {
       error.statusCode = 503;
       throw error;
     }
-    res.status(200).json({
-      message:
-        "Password Reset Otp has been sent to your Registered email address",
-    });
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 200,
+      data: {
+        message:
+          "Password Reset Otp has been sent to your Registered email address",
+      },
+    };
+  };
+  postData(req, res, next, body);
 };
 
-
-
-exports.postResetPassword = async (req, res, next) => {
-  try {
-    // Start a MongoDB transaction
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      const err = new Error("Validation Failed");
-      err.statusCode = 400;
-      err.data = errors.array();
-      throw err;
-    }
+const postResetPassword = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
     console.log("email: ", req.body.email);
     let otp = await redisClient.get(
       req.body.email + "_" + req.body.type + "_" + req.body.machine_id
@@ -317,43 +248,17 @@ exports.postResetPassword = async (req, res, next) => {
     let hashedPass = await bcrypt.hash(req.body.password, 12);
     user.password = hashedPass;
     user = await user.save({ session: session });
-
-    // If all documents are successfully created, commit the transaction
-    if (session.transaction != null && session.inTransaction()) {
-      await session.commitTransaction();
-    }
-    await session.endSession();
     console.log(`Password changed: ${user}`);
-    res.status(200).json({ message: "Password changed successfully" });
-  } catch (err) {
-    console.log(`Error: ${err}`);
-    // If an error occurs, abort the transaction and handle the error
-    try {
-      if (session.transaction != null && session.inTransaction()) {
-        await session.abortTransaction();
-      }
-      await session.endSession();
-      console.error("Transaction aborted:", err);
-    } catch (abortError) {
-      // Handle the case where aborting the transaction fails
-      console.error("Error aborting transaction:", abortError);
-    }
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 200,
+      data: { message: "Password changed successfully" },
+    };
+  };
+  postData(req, res, next, body);
 };
 
-exports.postChangePassword = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      const err = new Error("Validation Error: ");
-      err.statusCode = 400;
-      err.data = errors.array();
-      throw err;
-    }
+const postChangePassword = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
     let otp = await redisClient.get(
       req.body.email + "_" + req.body.type + "_" + req.body.machine_id
     );
@@ -371,32 +276,29 @@ exports.postChangePassword = async (req, res, next) => {
     let old_password = req.body.old_password;
     let passMatch = await bcrypt.compare(old_password, user.password);
     if (!passMatch) {
-      res.status(403).json({
-        message: "Please Enter Your old Password Correct",
-      });
+      return {
+        status: 403,
+        data: {
+          message: "Please Enter Your old Password Correct",
+        },
+      };
     }
     let newPass = await bcrypt.hash(req.body.new_password, 12);
     user.password = newPass;
-    await user.save();
+    await user.save({ session: session });
     console.log(`Password changed: ${user}`);
-    res.status(200).json({ message: "Password changed successfully" });
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 200,
+      data: {
+        message: "Password changed successfully",
+      },
+    };
+  };
+  postData(req, res, next, body);
 };
 
-exports.postGenerateOtp = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      const err = new Error("Validation Error: ");
-      err.statusCode = 400;
-      err.data = errors.array();
-      throw err;
-    }
+const postGenerateOtp = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
     const email = req.body.email;
     const type = req.body.type;
     const machine_id = req.body.machine_id;
@@ -419,18 +321,19 @@ exports.postGenerateOtp = async (req, res, next) => {
       throw error;
     }
     console.log("Mail sent for Otp: " + info.messageId);
-    res.status(200).json({ message: "Otp has been sent to your Email" });
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 200,
+      data: {
+        message: "Otp has been sent to your Email",
+      },
+    };
+  };
+  postData(req, res, next, body);
 };
 
 // verify token validity
-exports.postVerifyToken = async (req, res, next) => {
-  try {
+const postVerifyToken = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
     let decodedToken;
     decodedToken = jwt.verify(req.body.token, "supersecret");
     if (!decodedToken) {
@@ -440,35 +343,34 @@ exports.postVerifyToken = async (req, res, next) => {
     }
     const userId = decodedToken.userId;
     let user = await User.findOne({ _id: userId });
-    user = UserDto.user(user);
-    res.status(200).json({
-      user: user,
-    });
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    user = UserDto(user);
+    return {
+      status: 200,
+      data: {
+        user: user,
+      },
+    };
+  };
+  postData(req, res, next, body);
 };
 
-exports.getUser = async (req, res, next) => {
-  try {
+const getUser = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
     let user = await User.findOne({ _id: req.UserId }).populate({
       path: "profile",
+      path: "pilotStats",
     });
-    user = UserDto.user(user);
-    res.status(200).json({ user: user });
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    user = UserDto(user);
+    return {
+      status: 200,
+      data: { user: user },
+    };
+  };
+  postData(req, res, next, body);
 };
 
-exports.postValidateOtp = async (req, res, next) => {
-  try {
+const postValidateOtp = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
     let otp = await redisClient.get(
       req.body.email + "_" + req.body.type + "_" + req.body.machine_id
     );
@@ -485,30 +387,32 @@ exports.postValidateOtp = async (req, res, next) => {
       error.statusCode = 400;
       throw error;
     }
-    res.status(200).json({ message: "Otp Matched" });
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 200,
+      data: {
+        message: "Otp Matched",
+      },
+    };
+  };
+  postData(req, res, next, body);
 };
 
-exports.getAllUsers = async (req, res, next) => {
-  try {
+const getAllUsers = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
     let users = await User.find();
-    res.status(200).json({ users: users });
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 200,
+      data: {
+        users: users,
+      },
+    };
+  };
+  postData(req, res, next, body);
 };
 
-exports.get_profile = async (req, res, next) => {
-  const user_id = req.params.user_id;
-  try {
+const getProfile = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    const user_id = req.params.user_id;
     const user = await User.findById(user_id);
     if (user) {
       let userProfile = await Profile.findById(user.profile);
@@ -523,8 +427,12 @@ exports.get_profile = async (req, res, next) => {
             expiresIn: 36000,
           });
         }
-
-        res.status(200).json({ profile: userProfile || {} });
+        return {
+          status: 200,
+          data: {
+            profile: userProfile || {},
+          },
+        };
       } else {
         const error = new Error(`Profile not found`);
         error.statusCode = 404;
@@ -535,25 +443,17 @@ exports.get_profile = async (req, res, next) => {
       error.statusCode = 404;
       throw error;
     }
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+  };
+
+  postData(req, res, next, body);
 };
 
-exports.update_profile = async (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    const err = new Error("Validation Failed");
-    err.statusCode = 400;
-    err.data = errors.array();
-    throw err;
-  }
-  try {
+const updateProfile = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
     const s3 = new S3Client({});
     let obj = {};
+    const address = {}; // for address to be updated
+    const workingAddress = {}; //  for working address to be updated
     let savedFile;
     if (req.file) {
       const key = `${req.params.user_id}`;
@@ -587,6 +487,11 @@ exports.update_profile = async (req, res, next) => {
     if (req.body.aadhar) {
       obj.aadhar = req.body.aadhar;
     }
+    if (req.body.address) {
+      // get address from profile
+    }
+    if (req.body.working_address) {
+    }
 
     const user = await User.findById(req.params.user_id);
     if (user) {
@@ -594,6 +499,7 @@ exports.update_profile = async (req, res, next) => {
       if (userProfile) {
         userProfile = await Profile.findByIdAndUpdate(userProfile._id, obj, {
           new: true,
+          session: session,
         });
         const getFile = new GetObjectCommand({
           Bucket: process.env.BUCKET_NAME,
@@ -602,9 +508,13 @@ exports.update_profile = async (req, res, next) => {
         userProfile.profile_pic = await getSignedUrl(s3, getFile, {
           expiresIn: 36000,
         });
-        res
-          .status(200)
-          .send({ message: "Profile Updated", profile: userProfile });
+        return {
+          status: 200,
+          data: {
+            message: "Profile Updated",
+            profile: userProfile,
+          },
+        };
       } else {
         const error = new Error(`Profile not found`);
         error.statusCode = 404;
@@ -615,10 +525,22 @@ exports.update_profile = async (req, res, next) => {
       error.statusCode = 404;
       throw error;
     }
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+  };
+  postData(req, res, next, body);
+};
+
+export {
+  getAllUsers,
+  getProfile,
+  getUser,
+  postChangePassword,
+  postForgotPassword,
+  postGenerateOtp,
+  postResetPassword,
+  postSignUpInitiate,
+  postSignin,
+  postSignup,
+  postValidateOtp,
+  postVerifyToken,
+  updateProfile,
 };

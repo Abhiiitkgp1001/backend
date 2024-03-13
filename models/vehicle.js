@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const VehicleSchema = mongoose.Schema({
   registrationNumber: {
@@ -16,7 +16,7 @@ const VehicleSchema = mongoose.Schema({
   vehicleLoadType: {
     type: String, // heavy or light weight
     required: true,
-    default: "LIGHT"
+    default: "LIGHT",
   },
   vehicleWheelType: {
     type: Number, // vehicle wheel type 2 , 3 more
@@ -112,6 +112,6 @@ const VehicleSchema = mongoose.Schema({
       },
     ],
   },
-});
+}); 
 
-module.exports = mongoose.model("Vehicles", VehicleSchema);
+export default mongoose.model("Vehicles", VehicleSchema);

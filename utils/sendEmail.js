@@ -1,4 +1,4 @@
-const nodemailer = require("nodemailer");
+import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.ethereal.email",
@@ -8,8 +8,8 @@ const transporter = nodemailer.createTransport({
     pass: "5dtHHUrGxZqFmWxXCd",
   },
 });
-
-exports.sendResetPasswordOtp = (to, otp) => {
+const mail = {};
+mail.sendResetPasswordOtp = (to, otp) => {
   return transporter.sendMail({
     from: "cellDoc24@gmail.com", // sender address
     to: `${to}`, // list of receivers
@@ -27,7 +27,7 @@ exports.sendResetPasswordOtp = (to, otp) => {
   });
 };
 
-exports.sendSignUpOtp = (to, otp) => {
+mail.sendSignUpOtp = (to, otp) => {
   return transporter.sendMail({
     from: "cellDoc24@gmail.com", // sender address
     to: `${to}`, // list of receivers
@@ -44,3 +44,5 @@ exports.sendSignUpOtp = (to, otp) => {
         </div>`, // html body
   });
 };
+
+export default mail;

@@ -1,59 +1,42 @@
-const mongoose = require("mongoose");
-const Profile = require("../models/profile");
-const Address = require("../models/address");
-const { validationResult } = require("express-validator");
-const User = require("../models/user");
-const Vehicles = require("../models/vehicle");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const mailer = require("../utils/sendEmail");
-const crypto = require("crypto");
-const redisClient = require("../utils/redisClient");
-const UserDto = require("../dtos/user.dto");
-// const { throws } = require("assert");
+import bcrypt from "bcryptjs";
+import Address from "../models/address.js";
+import Profile from "../models/profile.js";
+import User from "../models/user.js";
+import Vehicles from "../models/vehicle.js";
+import { postData } from "../wrappers/postController.js";
 
-exports.postLockAccount = async (req, res, next) => {
-  try {
+const postLockAccount = async (req, res, next) => {
+  postData(req, res, next, async (req, res, next, session) => {
     const pilotId = req.body.pilotId;
     let pilot = await User.findById(pilotId);
     pilot.lock_account = true;
-    await pilot.save();
-    res.status(200).json({
-      message: "Pilot Acount Locked",
-    });
-  } catch (err) {
-    console.log(err);
-    err.statusCode = err.statusCode || 500;
-    next(err);
-  }
+    await pilot.save({ session: session });
+    return {
+      status: 201,
+      data: {
+        message: "Pilot Acount Locked",
+      },
+    };
+  });
 };
 
-exports.postUnlockAccount = async (req, res, next) => {
-  const pilotId = req.body.pilotId;
-  try {
+const postUnlockAccount = async (req, res, next) => {
+  postData(req, res, next, async (req, res, next, session) => {
+    const pilotId = req.body.pilotId;
     let pilot = await User.findById(pilotId);
     pilot.lock_account = false;
-    await pilot.save();
-    res.status(200).json({
-      message: "Pilot Acount Unlocked",
-    });
-  } catch (err) {
-    err.statusCode = err.statusCode || 500;
-    next(err);
-  }
+    await pilot.save({ session: session });
+    return {
+      status: 201,
+      data: {
+        message: "Pilot Acount Unlocked",
+      },
+    };
+  });
 };
 
-exports.postCreatePilot = async (req, res, next) => {
-  const session = await mongoose.startSession();
-  try {
-    session.startTransaction();
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      const err = new Error("Validation Failed");
-      err.statusCode = 409;
-      err.data = errors.array();
-      throw err;
-    }
+const postCreatePilot = async (req, res, next) => {
+  postData(req, res, next, async (req, res, next, session) => {
     const email = req.body.email;
     const phone_number = req.body.phone_number;
     const password = req.body.password;
@@ -69,7 +52,6 @@ exports.postCreatePilot = async (req, res, next) => {
       //create two addresses for profile
       const address = new Address({});
       const working_address = new Address({});
-
       profile = new Profile({
         email: email,
         phone_number: phone_number,
@@ -77,7 +59,7 @@ exports.postCreatePilot = async (req, res, next) => {
         working_address: working_address._id,
       });
       console.log(profile._id);
-      await profile.save({ session: session });
+      profile = await profile.save({ session: session });
       pilot = new User({
         email: email,
         phone_number: phone_number,
@@ -87,6 +69,8 @@ exports.postCreatePilot = async (req, res, next) => {
         childUsers: null,
       });
       pilot = await pilot.save({ session: session });
+      profile.user = pilot._id;
+      profile.save({ session: session });
       adminUser.childUsers.push(pilot._id);
       address.user = pilot._id;
       address.profile = profile._id;
@@ -111,63 +95,45 @@ exports.postCreatePilot = async (req, res, next) => {
         throw err;
       }
     }
-    // If all documents are successfully created, commit the transaction
-    if (session.transaction != null && session.inTransaction()) {
-      await session.commitTransaction();
-    }
-    await session.endSession();
-    res.status(201).json({
-      message: "Pilot Created successfully",
-      user: pilot,
-      profile: profile,
-    });
-  } catch (err) {
-    console.log(`Error while creating new User ${err}`);
-    // If an error occurs, abort the transaction and handle the error
-    try {
-      if (session.transaction != null && session.inTransaction()) {
-        await session.abortTransaction();
-      }
-      await session.endSession();
-      console.error("Transaction aborted:", err);
-    } catch (abortError) {
-      // Handle the case where aborting the transaction fails
-      console.error("Error aborting transaction:", abortError);
-    }
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
-};
-
-exports.getAllPilots = async (req, res, next) => {
-  //   console.log("getAllPilots");
-  try {
-    let allPilots = await User.findById(req.userId).populate({
-      path: "childUsers",
-      populate: {
-        path: "profile", // Assuming 'profile' is a field in the 'User' model referencing the 'Profile' model
-        path: "pilotStats", // populate pilot stats
+    return {
+      status: 201,
+      dataa: {
+        message: "Pilot Created successfully",
+        user: pilot,
+        profile: profile,
       },
-    }).childUsers;
-    res.status(200).json({
-      pilots: allPilots,
-    });
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    };
+  });
 };
 
-exports.removePilot = async (req, res, next) => {
-  const pilotId = req.params.pilotId;
-  const session = await mongoose.startSession();
-  try {
-    //archive user
-    session.startTransaction();
+const getAllPilots = async (req, res, next) => {
+  postData(req, res, next, async (req, res, next, session) => {
+    console.log("admin user id:", req.userId);
+    let adminUser = await User.findById(req.userId).populate({
+      path: "childUsers",
+      populate: [
+        {
+          path: "profile",
+        }, // Assuming 'profile' is a field in the 'User' model referencing the 'Profile' model
+        {
+          path: "pilotStats", // populate pilot stats
+        },
+      ],
+    });
+    let allPilots = adminUser.childUsers;
+    console.log("all pilots", allPilots);
+    return {
+      status: 200,
+      data: {
+        pilots: allPilots,
+      },
+    };
+  });
+};
+
+const removePilot = async (req, res, next) => {
+  postData(req, res, next, async (req, res, next, session) => {
+    const pilotId = req.params.pilotId;
     const pilot = await User.findByIdAndUpdate(
       { _id: pilotId },
       { archived: true },
@@ -177,7 +143,7 @@ exports.removePilot = async (req, res, next) => {
       }
     );
     //update linked pilots
-    const updatedVehicles = await Vehicles.updateOne(
+    await Vehicles.updateOne(
       { _id: adminUser._id, addedVehicles: { $in: adminUser.addedVehicles } },
       { $pull: { "addedVehicles.$[].linkedPilots": pilotId } },
       {
@@ -198,46 +164,25 @@ exports.removePilot = async (req, res, next) => {
     ).populate({
       path: ["childUsers", "addedVehicles"],
     });
-    // If all documents are successfully created, commit the transaction
-    if (session.transaction != null && session.inTransaction()) {
-      await session.commitTransaction();
-    }
-    await session.endSession();
-    res.status(200).json({
-      message: "Pilot removed successfully",
-      adminUser: adminUser,
-      removedPilot: pilot,
-    });
-  } catch (err) {
-    // If an error occurs, abort the transaction and handle the error
-    try {
-      if (session.transaction != null && session.inTransaction()) {
-        await session.abortTransaction();
-      }
-      await session.endSession();
-      console.error("Transaction aborted:", err);
-    } catch (abortError) {
-      // Handle the case where aborting the transaction fails
-      console.error("Error aborting transaction:", abortError);
-    }
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 200,
+      data: {
+        message: "Pilot removed successfully",
+        adminUser: adminUser,
+        removedPilot: pilot,
+      },
+    };
+  });
 };
 
 //link vehicle to admin
-exports.postAddVehicle = async (req, res, next) => {
-  const session = await mongoose.startSession();
-  try {
-    session.startTransaction();
+const postAddVehicle = async (req, res, next) => {
+  postData(req, res, next, async (req, res, next, session) => {
     // get vehicle information
     const registrationNumber = req.body.registrationNumber || null;
     const vehicleLoadType = req.body.vehicleLoadType;
     const vehicleWheelType = req.body.vehicleWheelType;
     const deviceId = req.body.deviceId || null;
-
     let adminUser;
     //get current adim user and then create vehicle and then update vehicle
     let vehicle = await Vehicles.findOne({
@@ -292,40 +237,20 @@ exports.postAddVehicle = async (req, res, next) => {
         },
       ]);
       vehicle = await vehicle.save({ sessionId: session, new: true });
+      return {
+        status: 201,
+        data: {
+          message: "vehicle added",
+          adminUser: adminUser,
+          addedVehicle: vehicle,
+        },
+      };
     }
-
-    if (session.transaction != null && session.inTransaction()) {
-      await session.commitTransaction();
-    }
-    await session.endSession();
-    res.status(201).json({
-      message: "vehicle added",
-      adminUser: adminUser,
-      addedVehicle: vehicle,
-    });
-  } catch (err) {
-    // If an error occurs, abort the transaction and handle the error
-    try {
-      if (session.transaction != null && session.inTransaction()) {
-        await session.abortTransaction();
-      }
-      await session.endSession();
-      console.error("Transaction aborted:", err);
-    } catch (abortError) {
-      // Handle the case where aborting the transaction fails
-      console.error("Error aborting transaction:", abortError);
-    }
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+  });
 };
 
-exports.deleteVehicle = async (req, res, next) => {
-  const session = await mongoose.startSession();
-  try {
-    session.startTransaction();
+const deleteVehicle = async (req, res, next) => {
+  postData(req, res, next, async (req, res, next, session) => {
     let vehicle = await Vehicles.findByIdAndUpdate(
       req.params.vehicleId,
       { archived: true },
@@ -348,64 +273,41 @@ exports.deleteVehicle = async (req, res, next) => {
     ).populate({
       path: ["childUsers", "addedVehicles"],
     });
-
-    if (session.transaction != null && session.inTransaction()) {
-      await session.commitTransaction();
-    }
-    await session.endSession();
-    res.status(200).json({
-      message: "linked vehicle removed",
-      adminUser: adminUser,
-      deletedVehicle: vehicle,
-    });
-  } catch (err) {
-    // If an error occurs, abort the transaction and handle the error
-    try {
-      if (session.transaction != null && session.inTransaction()) {
-        await session.abortTransaction();
-      }
-      await session.endSession();
-      console.error("Transaction aborted:", err);
-    } catch (abortError) {
-      // Handle the case where aborting the transaction fails
-      console.error("Error aborting transaction:", abortError);
-    }
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 201,
+      data: {
+        message: "linked vehicle removed",
+        adminUser: adminUser,
+        deletedVehicle: vehicle,
+      },
+    };
+  });
 };
 
 //get all vehicles for an admin
-exports.getAllVehicles = async (req, res, next) => {
-  //   console.log("getAllPilots");
-  try {
+const getAllVehicles = async (req, res, next) => {
+  postData(req, res, next, async (req, res, next, session) => {
     let allVehicles = await User.findById(req.userId).populate({
       path: "addedVehicles",
       populate: {
         path: "device",
         path: "linkedPilots", // Assuming 'deviceId' is a field in the 'User' model referencing the 'Devices' model
       },
-    }).addedVehicles;
-    res.status(200).json({
-      vehicles: allVehicles,
     });
-  } catch (err) {
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 200,
+      data: {
+        vehicles: allVehicles.addedVehicles,
+      },
+    };
+  });
 };
 
-exports.postAssignPilot = async (req, res, next) => {
-  //userID and vehicle ID
-  const pilotId = req.body.userId;
-  const vehicleId = req.body.vehicleId;
-  const session = await mongoose.startSession();
-  try {
-    session.startTransaction();
+const postAssignPilot = async (req, res, next) => {
+  postData(req, res, next, async (req, res, next, session) => {
+    //userID and vehicle ID
+    const pilotId = req.body.userId;
+    const vehicleId = req.body.vehicleId;
     let vehicle = await Vehicles.findById(vehicleId);
     if (vehicle === null) {
       const error = new Error("Vehicle doesnt  exist! ");
@@ -422,41 +324,21 @@ exports.postAssignPilot = async (req, res, next) => {
     vehicle.linkedPilots.push(pilot._id);
     pilot = await pilot.save({ session: session, new: true });
     vehicle = await vehicle.save({ session: session, new: true });
-
-    if (session.transaction != null && session.inTransaction()) {
-      await session.commitTransaction();
-    }
-    await session.endSession();
-    res.status(201).json({
-      message: "Pilot assigned successfully",
-      vehicle: vehicle,
-      pilot: pilot,
-    });
-  } catch (err) {
-    // If an error occurs, abort the transaction and handle the error
-    try {
-      if (session.transaction != null && session.inTransaction()) {
-        await session.abortTransaction();
-      }
-      await session.endSession();
-      console.error("Transaction aborted:", err);
-    } catch (abortError) {
-      // Handle the case where aborting the transaction fails
-      console.error("Error aborting transaction:", abortError);
-    }
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 201,
+      data: {
+        message: "Pilot assigned successfully",
+        vehicle: vehicle,
+        pilot: pilot,
+      },
+    };
+  });
 };
 
-exports.postRemoveAssignedPilot = async (req, res, next) => {
-  const pilotId = req.body.userId;
-  const vehicleId = req.body.vehicleId;
-  const session = await mongoose.startSession();
-  try {
-    session.startTransaction();
+const postRemoveAssignedPilot = async (req, res, next) => {
+  postData(req, res, next, async (req, res, next, session) => {
+    const pilotId = req.body.userId;
+    const vehicleId = req.body.vehicleId;
     const pilot = await User.findByIdAndUpdate(
       pilotId,
       {
@@ -471,33 +353,29 @@ exports.postRemoveAssignedPilot = async (req, res, next) => {
       },
       { session: session, new: true }
     );
-    if (session.transaction != null && session.inTransaction()) {
-      await session.commitTransaction();
-    }
-    await session.endSession();
-    res.status(204).json({
-      message:
-        "Vehicle with ID " +
-        vehicleId +
-        " removed successfully from linkedPilot",
-      updatedPilot: pilot,
-      updatedVehicle: vehicle,
-    });
-  } catch (err) {
-    // If an error occurs, abort the transaction and handle the error
-    try {
-      if (session.transaction != null && session.inTransaction()) {
-        await session.abortTransaction();
-      }
-      await session.endSession();
-      console.error("Transaction aborted:", err);
-    } catch (abortError) {
-      // Handle the case where aborting the transaction fails
-      console.error("Error aborting transaction:", abortError);
-    }
-    if (!err.statusCode) {
-      err.statusCode = 500;
-    }
-    next(err);
-  }
+    return {
+      status: 204,
+      data: {
+        message:
+          "Vehicle with ID " +
+          vehicleId +
+          " removed successfully from linkedPilot",
+        updatedPilot: pilot,
+        updatedVehicle: vehicle,
+      },
+    };
+  });
+};
+
+export {
+  deleteVehicle,
+  getAllPilots,
+  getAllVehicles,
+  postAddVehicle,
+  postAssignPilot,
+  postCreatePilot,
+  postLockAccount,
+  postRemoveAssignedPilot,
+  postUnlockAccount,
+  removePilot,
 };

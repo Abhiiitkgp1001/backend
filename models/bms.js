@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const BmsSchema = new mongoose.Schema({
   voltage: {
@@ -31,4 +31,4 @@ const BmsSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("Bms", BmsSchema);
+export default mongoose.model("Bms", BmsSchema);

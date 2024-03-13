@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const UserSchema = new mongoose.Schema({
   profile: {
@@ -67,7 +67,8 @@ const UserSchema = new mongoose.Schema({
   pilotStats: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "PilotStats",
+    default: null,
   },
 });
 
-module.exports = mongoose.model("Users", UserSchema);
+export default mongoose.model("Users", UserSchema);

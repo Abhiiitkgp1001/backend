@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const addressSchema = mongoose.Schema({
   user: {
@@ -42,4 +42,4 @@ const addressSchema = mongoose.Schema({
   // pin_code string
 });
 
-module.exports = new mongoose.model("Address", addressSchema);
+export default mongoose.model("Address", addressSchema);

@@ -1,66 +1,30 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const bms_data_contoller = require("./controllers/data_controllers.js");
-const mongoose = require("mongoose");
-const cors = require("cors");
-require("dotenv").config();
-const redisClient = require("./utils/redisClient");
-const apiAuth = require("./middlewares/apiEndPointAuth");
+import bodyParser from "body-parser";
+import cors from "cors";
+import dotenv from "dotenv";
+import express from "express";
+import mongoose from "mongoose";
+import adminRoutes from "./routes/admin.js";
+import authRoutes from "./routes/auth.js";
+import dataRoutes from "./routes/data.js";
+import testRoutes from "./routes/test.js";
+import redisClient from "./utils/redisClient.js";
 
-const authRoutes = require("./routes/auth");
-const adminRoutes = require("./routes/admin");
+//config
+dotenv.config();
 
 const app = express();
-const port = 80;
-const dbUrl =
-  "mongodb+srv://celldoc24:8FRDnVp4p8iFJdAn@clustercelldoc.rth33nb.mongodb.net/?retryWrites=true&w=majority";
+const port = process.env.PORT || 8080;
+const dbUrl = process.env.MONGODB_URL;
 
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
-// Parse JSON requests
 app.use(bodyParser.json());
 
-//set auth routes
+//set routes
 app.use("/auth", authRoutes);
 app.use("/admin", adminRoutes);
-
-//fetch session data
-app.get(
-  "/data/get_all_sessions",
-  apiAuth,
-  bms_data_contoller.getSessionsController
-);
-
-app.get(
-  "/data/get_session_data",
-  apiAuth,
-  bms_data_contoller.getSessionDataController
-);
-
-app.get(
-  "/data/get_all_devices",
-  apiAuth,
-  bms_data_contoller.getAllDevicesController
-);
-
-app.get(
-  "/data/get_device_all_sessions/:device_id",
-  apiAuth,
-  bms_data_contoller.getDeviceSessionsController
-);
-
-// post route for data sendings
-app.post(
-  "/data/session_bms_data",
-  apiAuth,
-  bms_data_contoller.session_bms_data_controller
-);
-
-app.post(
-  "/data/create_session",
-  apiAuth,
-  bms_data_contoller.create_session_controller
-);
+app.use("/data", dataRoutes);
+app.use("/test", testRoutes);
 
 // app error handler middleware
 app.use((error, req, res, next) => {
@@ -71,6 +35,7 @@ app.use((error, req, res, next) => {
     .status(error.statusCode || 500)
     .json({ message: error.message, data: error.data });
 });
+
 mongoose
   .connect(dbUrl)
   .then((result) => {
@@ -103,5 +68,3 @@ mongoose
   .catch((err) => {
     console.log(err);
   });
-
-// app.listen(port, () => console.log(`Express app running on port ${port}!`));

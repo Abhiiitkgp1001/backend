@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const TemperatureSchema = new mongoose.Schema({
   bms_id: {
@@ -26,4 +26,4 @@ const TemperatureSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("Temperatures", TemperatureSchema);
+export default mongoose.model("Temperatures", TemperatureSchema);

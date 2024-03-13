@@ -1,12 +1,11 @@
-const BMS = require("../models/bms.js");
-const Current = require("../models/current.js");
-const Voltage = require("../models/voltage");
-const Temperature = require("../models/temperature.js");
-const Session = require("../models/Trips.js");
-const Device = require("../models/device.js");
-const mongoose = require("mongoose");
+import Session from "../models/Trips.js";
+import BMS from "../models/bms.js";
+import Current from "../models/current.js";
+import Device from "../models/device.js";
+import Temperature from "../models/temperature.js";
+import Voltage from "../models/voltage.js";
 
-exports.create_session_controller = (req, res) => {
+const postCreateSession = (req, res) => {
   const no_of_bms = req.body.no_of_bms;
   const no_of_cells = req.body.no_of_cells;
   const bms_names = req.body.bms_names;
@@ -126,7 +125,7 @@ exports.create_session_controller = (req, res) => {
     .catch((err) => console.log(err));
 };
 
-exports.session_bms_data_controller = (req, res, next) => {
+const postSessionBmsData = (req, res, next) => {
   //get data from body
   console.log(req.body);
   const session_id = req.body.session_id;
@@ -434,7 +433,7 @@ exports.session_bms_data_controller = (req, res, next) => {
     });
 };
 
-exports.getSessionDataController = (req, res) => {
+const getSessionData = (req, res) => {
   // Usage: Fetch session and then dynamically populate references
   const sessionId = req.query.sessionId;
   // Function to dynamically populate references
@@ -474,7 +473,7 @@ exports.getSessionDataController = (req, res) => {
     });
 };
 
-exports.getSessionsController = (req, res, next) => {
+const getSessions = (req, res, next) => {
   Session.find()
     .select("_id, session_name")
     .exec()
@@ -487,7 +486,7 @@ exports.getSessionsController = (req, res, next) => {
     });
 };
 
-exports.getAllDevicesController = (req, res, next) => {
+const getAllDevices = (req, res, next) => {
   Device.find()
     .select("_id device_name device_unique_id")
     .exec()
@@ -501,7 +500,7 @@ exports.getAllDevicesController = (req, res, next) => {
     });
 };
 
-exports.getDeviceSessionsController = (req, res, next) => {
+const getDeviceSessions = (req, res, next) => {
   const device_id = req.params.device_id;
   console.log("device_id: " + device_id);
   Device.findOne({ device_unique_id: device_id })
@@ -516,13 +515,12 @@ exports.getDeviceSessionsController = (req, res, next) => {
       res.send([]);
     });
 };
-// populate: [
-//   {
-//     path: "bms_id",
-//     populate: [
-//       { path: "voltage" },
-//       { path: "current" },
-//       { path: "temp" },
-//     ],
-//   },
-// ],
+
+export {
+  getAllDevices,
+  getDeviceSessions,
+  getSessionData,
+  getSessions,
+  postCreateSession,
+  postSessionBmsData,
+};

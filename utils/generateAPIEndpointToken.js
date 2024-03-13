@@ -1,4 +1,4 @@
-const jwt = require("jsonwebtoken");
+import jwt from "jsonwebtoken";
 
 const APIEndpointId = "api-endpoint-id";
 const secretKey = "supersecret";

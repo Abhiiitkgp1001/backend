@@ -1,6 +1,6 @@
-const User = require("../models/user");
+import User from "../models/user.js";
 
-module.exports = (req, res, next) => {
+const isAdmin = (req, res, next) => {
   const userId = req.userId;
   User.findById({ _id: userId })
     .then((user) => {
@@ -16,3 +16,5 @@ module.exports = (req, res, next) => {
     });
   next();
 };
+
+export { isAdmin };
