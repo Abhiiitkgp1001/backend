@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 
 const ProfileSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Users",
+  },
   first_name: {
     type: String,
     default: "",
@@ -49,10 +53,7 @@ const ProfileSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Users",
-  },
+
   dateOfBirth: {
     type: Date,
     default: null,

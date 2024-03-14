@@ -1,33 +1,18 @@
 import mongoose from "mongoose";
 
 const CurrentSchema = new mongoose.Schema({
-  // current_id: {
-  //     type: String,
-  //     required: true,
-  //     unique: true,
-  // },
-  bms_id: {
+  bmsIc: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Bms",
+    ref: "BmsIcs",
     required: true,
   },
-  data: {
-    type: [
-      {
-        timeStamp: {
-          type: Date,
-          required: true,
-        },
-        value: {
-          type: Number,
-          required: true,
-        },
-      },
-    ],
+  timestamp: {
+    type: Date,
+    default: null,
   },
-  current_name: {
-    type: String,
-    required: true,
+  value: {
+    type: Number,
+    default: 0,
   },
 });
 

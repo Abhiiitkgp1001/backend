@@ -1,28 +1,15 @@
 import mongoose from "mongoose";
 
 const VoltageSchema = new mongoose.Schema({
-  bms_id: {
+  cell: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Bms",
-    required: true,
+    ref: "Cells",
   },
-  data: {
-    type: [
-      {
-        timeStamp: {
-          type: Date,
-          required: true,
-        },
-        value: {
-          type: Number,
-          required: true,
-        },
-      },
-    ],
+  timestamp: {
+    type: Date,
   },
-  cell_name: {
-    type: String,
-    required: true,
+  value: {
+    type: Number,
   },
 });
 

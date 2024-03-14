@@ -1,28 +1,15 @@
 import mongoose from "mongoose";
 
 const TemperatureSchema = new mongoose.Schema({
-  bms_id: {
+  temperatureSensor: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Bms",
-    required: true,
+    ref: "TemperatureSensors",
   },
-  data: {
-    type: [
-      {
-        timeStamp: {
-          type: Date,
-          required: true,
-        },
-        value: {
-          type: Number,
-          required: true,
-        },
-      },
-    ],
+  timestamp: {
+    type: Date,
   },
-  temp_name: {
-    type: String,
-    required: true,
+  value: {
+    type: Number,
   },
 });
 

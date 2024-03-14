@@ -1,34 +1,43 @@
 import mongoose from "mongoose";
 
 const SessionSchema = new mongoose.Schema({
-  device_id: {
+  device: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Devices",
     required: true,
   },
-  no_of_bms: {
-    type: Number,
-    required: true,
-  },
-  bms: {
-    type: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Bms",
-      },
-    ],
-  },
-  session_name: {
+  tripName: {
+    // wiil ask
     type: String,
     required: true,
   },
-  start_time: {
+  startTime: {
     type: Date,
     required: true,
   },
-  end_time: {
+  endTime: {
     type: Date,
     required: true,
+  },
+  location: {
+    type: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Locations",
+      },
+    ],
+  },
+  pilot: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Users",
+  },
+  speed: {
+    type: Number,
+    default: 0,
+  },
+  distance: {
+    type: Number,
+    default: 0,
   },
 });
 

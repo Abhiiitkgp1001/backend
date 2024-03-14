@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const DeviceSchema = new mongoose.Schema({
-  device_unique_id: {
+  deviceUniqueId: {
     type: String,
     required: true,
   },
@@ -15,7 +15,7 @@ const DeviceSchema = new mongoose.Schema({
     ref: "Vehicles",
     default: null,
   },
-  device_name: {
+  deviceName: {
     type: String,
     required: true,
   },
@@ -25,7 +25,11 @@ const DeviceSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Trips",
       },
-    ]
+    ],
+  },
+  batteryPack: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "BatteryPacks",
   },
 });
 

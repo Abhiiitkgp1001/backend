@@ -36,10 +36,6 @@ const addressSchema = mongoose.Schema({
     type: String,
     default: "",
   },
-  // city string
-  // district string
-  // state string
-  // pin_code string
 });
 
 export default mongoose.model("Address", addressSchema);

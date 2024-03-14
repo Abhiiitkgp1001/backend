@@ -1,26 +1,18 @@
 import mongoose from "mongoose";
 
 const LocationSchema = mongoose.Schema({
-  street: {
-    type: String,
-    default: "",
+  trip: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Trips",
   },
-  city: {
-    type: String,
-    default: "",
+  timestamp: {
+    type: Date,
   },
-
-  district: {
-    type: String,
-    default: "",
+  lattitude: {
+    type: Number,
   },
-  state: {
-    type: String,
-    default: "",
-  },
-  pin_code: {
-    type: String,
-    default: "",
+  longitude: {
+    type: Number,
   },
 });
 
