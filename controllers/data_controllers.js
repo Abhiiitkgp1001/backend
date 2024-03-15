@@ -1,5 +1,5 @@
 import Session from "../models/Trips.js";
-import BMS from "../models/bms.js";
+import BMS from "../models/bmsIc.js";
 import Current from "../models/current.js";
 import Device from "../models/device.js";
 import Temperature from "../models/temperature.js";

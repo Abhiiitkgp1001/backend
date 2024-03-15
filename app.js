@@ -36,35 +36,16 @@ app.use((error, req, res, next) => {
     .json({ message: error.message, data: error.data });
 });
 
-mongoose
-  .connect(dbUrl)
-  .then((result) => {
-    redisClient
-      .connect()
-      .then((connection) => {
-        app.listen(port, () => {
-          redisClient
-            .set("a", "1234")
-            .then((redisResult) => {
-              console.log(redisResult);
-            })
-            .catch((error) => {
-              console.log(`Redis Error: ${error}`);
-            });
-          redisClient
-            .get("a")
-            .then((val) => {
-              console.log(val);
-            })
-            .catch((error) => {
-              console.log(error);
-            });
 
-          console.log(`Express app running on port ${port}!`);
-        });
-      })
-      .catch((error) => console.log(error));
+try{
+  const dbConnenction = await mongoose.connect(dbUrl);
+  const redisConnection = await redisClient.connect();
+  app.listen(port, ()=>{
+    console.log("db connection - " + mongoose.connection.readyState);
+
+    console.log("redis connection - " +redisConnection);
+    console.log(`Express app running on port ${port}!`);
   })
-  .catch((err) => {
-    console.log(err);
-  });
+}catch(e){
+  console.log(err);
+}
