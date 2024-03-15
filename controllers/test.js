@@ -1,6 +1,6 @@
 import Address from "../models/address.js";
 import Device from "../models/device.js";
-import PilotStat from "../models/pilot_stats.js";
+import PilotStat from "../models/pilotStats.js";
 import Profile from "../models/profile.js";
 import User from "../models/user.js";
 import Vehicles from "../models/vehicle.js";
