@@ -1,9 +1,153 @@
-import Session from "../models/Trips.js";
-import BMS from "../models/bmsIc.js";
+import BatteryPack from "../models/BatteryPack.js";
+import Temperature from "../models/Temperature.js";
+import Trip from "../models/Trips.js";
+import BmsIc from "../models/bmsIc.js";
 import Current from "../models/current.js";
 import Device from "../models/device.js";
-import Temperature from "../models/temperature.js";
-import Voltage from "../models/voltage.js";
+import postData from "../wrappers/postController.js";
+
+const initBmsIc = async (bmsUniqueId, isMaster, session) => {
+  let bmsIc = new BmsIc({
+    isMaster: isMaster,
+    batteryPackId: null,
+    bmsUniqueId: bmsUniqueId,
+    bmsName: "",
+    device: null,
+    current: [],
+    cells: [],
+    temperatureSensors: [],
+  });
+  bmsIc = await bmsIc.save({ session: session, new: true });
+};
+
+const postCreateBmsIc = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    const bmsIc = await initBmsIc(
+      req.body.bmsUniqueId,
+      req.body.isMaster,
+      session
+    );
+    return {
+      message: "BMS IC created Successfully",
+      bmsIc: bmsIc,
+    };
+  };
+  postData(req, res, next, body);
+};
+
+// numTempSensorPerIC,
+// numVoltSensor,
+// let tempSensors = [];
+// let voltageSensors = [];
+//   // create a temp sensors array
+//   for (let i = 0; i < numTempSensorPerIC; i++) {
+//     let tempSensor = new TemperatureSensor({
+//       bsmIc: bmsIc._id,
+//       temperature: [],
+//     });
+//     tempSensor = await tempSensor.save({ session: session, new: true });
+//     tempSensors.push(tempSensor._id);
+//   }
+
+//   // create cells array
+//   for (let i = 0; i < numVoltSensor; i++) {
+//     let cell = new Cell({
+//       bsmIc: bmsIc._id,
+//       voltage: [],
+//       power: 0,
+//     });
+//     cell = await cell.save({ session: session, new: true });
+//     voltageSensors.push(cell._id);
+//   }
+//   BmsIc.findByIdAndUpdate(
+//     bmsIc._id,
+//     {
+//       cells: { $push: { $each: { voltageSensors } } },
+//       temperatureSensors: {
+//         $push: { $each: { tempSensors } },
+//       },
+//     },
+//     {
+//       session: session,
+//       new: true,
+//     }
+//   );
+// };
+
+const initDevice = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    const deviceUniqueId = req.body.deviceUniqueId;
+    // check for possibel units in the device
+  };
+};
+
+const postCreateTrip = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    let device = await Device.findOne(req.body.deviceUniqueId);
+    if (!device) {
+      const error = new Error(
+        "Device Not Found \n Trying to create session using Unregistered Device"
+      );
+      error.statusCode = 403;
+      throw error;
+    } else {
+      const trip = new Trip({
+        pilot: req.body.pilotId,
+        startTime: req.body.startTime,
+        endTime: req.body.endTime,
+        device: device._id,
+      });
+      await trip.save({ session: true });
+      device.trip.push(trip._id);
+      device = device.save({ session: true, new: true });
+      return {
+        tripId: trip._id,
+        deviceId: device._id,
+      };
+    }
+  };
+  postData(req, res, next, body);
+};
+
+const postUpdateTrip = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    let object = {};
+    if (req.body.tripName) {
+      object.tripName = req.body.tripName;
+    }
+    if (req.body.endTime) {
+      object.endTime = req.body.endTime;
+    }
+
+    let trip = await Trip.findByIdAndUpdate(req.body.tripId, object, {
+      session: true,
+      new: true,
+    });
+    return { tripId: trip._id };
+  };
+  postData(req, res, next, body);
+};
+const getTripData = async (req, res, next) => {
+  // get data using trip id
+};
+
+const postDeviceData = async (req, res, next) => {
+  const body = async (req, req, next, session) => {
+    const device = await Device.findById(req.body.deviceId);
+    const batteryPack = await BatteryPack.findById(device.batteryPack);
+    if (req.body.location) {
+      // will docation update for current trip
+    }
+    if (req.body.bmsData) {
+      // will do bms ic related data update for current trip
+      const bms_data = req.body.bmsData;
+      const num_bms = bms_data.num_bms;
+      const bms_ics_data = bms_data.data;
+      if (batteryPack.bms_ic.length === 0) {
+      }
+    }
+  };
+};
 
 const postCreateSession = (req, res) => {
   const no_of_bms = req.body.no_of_bms;
@@ -14,6 +158,9 @@ const postCreateSession = (req, res) => {
   const session_name = req.body.session_name;
   const device_unique_id = req.body.device_unique_id;
   const device_name = req.body.device_name;
+
+  // create session and out into device sessions array
+  // get battery pack information for device andn then get its ics and then update
 
   const bms_ids = [];
   Device.findOne({ device_unique_id: device_unique_id })
@@ -522,5 +669,8 @@ export {
   getSessionData,
   getSessions,
   postCreateSession,
+  postCreateTrip,
   postSessionBmsData,
+  postUpdateTrip,
+  postCreateBmsIc
 };

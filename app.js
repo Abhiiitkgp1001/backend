@@ -5,7 +5,7 @@ import express from "express";
 import mongoose from "mongoose";
 import adminRoutes from "./routes/admin.js";
 import authRoutes from "./routes/auth.js";
-import dataRoutes from "./routes/data.js";
+import dataRoutes from "./routes/deviceData.js";
 import testRoutes from "./routes/test.js";
 import redisClient from "./utils/redisClient.js";
 
@@ -36,16 +36,15 @@ app.use((error, req, res, next) => {
     .json({ message: error.message, data: error.data });
 });
 
-
-try{
+try {
   const dbConnenction = await mongoose.connect(dbUrl);
   const redisConnection = await redisClient.connect();
-  app.listen(port, ()=>{
+  app.listen(port, () => {
     console.log("db connection - " + mongoose.connection.readyState);
 
-    console.log("redis connection - " +redisConnection);
+    console.log("redis connection - " + redisConnection);
     console.log(`Express app running on port ${port}!`);
-  })
-}catch(e){
+  });
+} catch (e) {
   console.log(err);
 }

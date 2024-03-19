@@ -4,9 +4,10 @@ import {
   getDeviceSessions,
   getSessionData,
   getSessions,
+  postCreateBmsIc,
   postCreateSession,
   postSessionBmsData,
-} from "../controllers/data_controllers.js";
+} from "../controllers/deviceDataControllers.js";
 import apiAuth from "../middlewares/apiEndPointAuth.js";
 
 const router = express.Router();
@@ -24,5 +25,7 @@ router.get("/get_device_all_sessions/:device_id", apiAuth, getDeviceSessions);
 router.post("/session_bms_data", apiAuth, postSessionBmsData);
 
 router.post("/create_session", apiAuth, postCreateSession);
+
+router.create("/create_bmsic", apiAuth, postCreateBmsIc);
 
 export default router;
