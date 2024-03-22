@@ -35,12 +35,7 @@ const VehicleSchema = mongoose.Schema({
     ref: "Devices",
     default: null,
   },
-  user: {
-    // device
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Users",
-    default: null,
-  },
+
   archived: {
     type: Boolean,
     default: false,

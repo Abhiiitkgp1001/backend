@@ -12,6 +12,11 @@ const cellSchema = mongoose.Schema({
         ref: "Voltages",
       },
     ],
+    default: [],
+  },
+  index: {
+    type: Number,
+    default: -1,
   },
   power: {
     type: Number,

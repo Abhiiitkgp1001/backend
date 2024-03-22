@@ -14,6 +14,10 @@ const tempSensorsSchema = mongoose.Schema({
       },
     ],
   },
+  index: {
+    type: Number,
+    default: -1,
+  },
 });
 
 export default mongoose.model("TemperatureSensors", tempSensorsSchema);

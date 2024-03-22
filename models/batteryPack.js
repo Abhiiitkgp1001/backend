@@ -12,6 +12,7 @@ const batteryPackSchema = mongoose.Schema({
         ref: "BmsIcs",
       },
     ],
+    default: []
   },
   cellChemistry: {
     type: String,
