@@ -1,33 +1,40 @@
 import BatteryPack from "../models/BatteryPack.js";
-import Temperature from "../models/Temperature.js";
-import Trip from "../models/Trips.js";
 import BmsIc from "../models/bmsIc.js";
-import Current from "../models/current.js";
-import Device from "../models/device.js";
-import { postData } from "../wrappers/postController.js";
 import Cell from "../models/cells.js";
+import Device from "../models/device.js";
 import TemperatureSensor from "../models/temperatureSensors.js";
+import { postData } from "../wrappers/postController.js";
 
-const initBmsIc = async (bmsUniqueId, isMaster, bmsName, noOfCells, noOfTemperatureSensors, session) => {
+const initBmsIc = async (
+  bmsUniqueId,
+  isMaster,
+  bmsName,
+  noOfCells,
+  noOfTemperatureSensors,
+  session
+) => {
   let bmsIc = new BmsIc({
     isMaster: isMaster,
     bmsUniqueId: bmsUniqueId,
-    bmsName: bmsName
+    bmsName: bmsName,
   });
 
   bmsIc = await bmsIc.save({ new: true }, { session });
   let cells = [];
-  for(let i=0;i<noOfCells;i++){
+  for (let i = 0; i < noOfCells; i++) {
     let cell = new Cell({ bmsIc: bmsIc._id });
     cell = await cell.save({ new: true }, { session });
     cells.push(cell._id);
-  } 
+  }
   let temperatureSensors = [];
-  for(let i=0;i<noOfTemperatureSensors;i++){
+  for (let i = 0; i < noOfTemperatureSensors; i++) {
     let temperatureSensor = new TemperatureSensor({ bmsIc: bmsIc._id });
-    temperatureSensor = await temperatureSensor.save({ new: true }, { session });
+    temperatureSensor = await temperatureSensor.save(
+      { new: true },
+      { session }
+    );
     temperatureSensors.push(temperatureSensor._id);
-  } 
+  }
   bmsIc.cells = cells;
   bmsIc.temperatureSensors = temperatureSensors;
 
@@ -40,11 +47,53 @@ const initBmsIc = async (bmsUniqueId, isMaster, bmsName, noOfCells, noOfTemperat
 // post merge battery pack and bms ics ---- Abhishek
 // post merge device and battery pack ---Aman
 
+const postMergeDeviceWithBatteryPack = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    console.log(req.body);
+    // find device and set batterypack with that
+    const device = await Device.findById(req.body.deviceId);
+    if (!device) {
+      const error = new Error(
+        "Couldn't find device with deviceId " + req.body.deviceId
+      );
+      error.statusCode = 404;
+      throw error;
+    } else {
+      device.batteryPack = req.body.batteryPackId;
+      // save device with battery pack linked
+      device = await device.save({ session: session, new: true });
+      return {
+        message: "Device merged with battery pack Successfully",
+        device: device,
+      };
+    }
+  };
+  postData(req, res, next, body);
+};
+
+const postCreateDevice = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    console.log(req.body);
+    const device = new Device({
+      deviceUniqueId: req.body.deviceUniqueId,
+      user: null,
+      vehicle: null,
+      deviceName: req.body.deviceName,
+      trip: [],
+      batteryPack: req.body.batteryPackId,
+    });
+    device = await device.save({ session: session, new: true });
+    return {
+      message: "Device created successfully",
+      device: device,
+    };
+  };
+  postData(req, res, next, body);
+};
 
 const postCreateBmsIc = async (req, res, next) => {
   console.log(req.body);
   const body = async (req, res, next, session) => {
-    
     await initBmsIc(
       req.body.bmsUniqueId,
       req.body.isMaster,
@@ -56,83 +105,105 @@ const postCreateBmsIc = async (req, res, next) => {
     return {
       status: 200,
       data: {
-        message: "BMS IC created Successfully"
-      }
+        message: "BMS IC created Successfully",
+      },
     };
   };
   postData(req, res, next, body);
 };
 
-const initBatteryPack = async (batteryPackUniqueId, cellChemistry, manufacturer, maxVoltage, minVoltage, power, capacity, ratedCurrent, maxCurrent, maxTemperature, session) => {
- let batteryPack = new BatteryPack({
-  batteryPackUniqueId, cellChemistry, manufacturer, maxVoltage, minVoltage, power, capacity, ratedCurrent, maxCurrent, maxTemperature 
- });
- await batteryPack.save({ session });
-}
+const initBatteryPack = async (
+  batteryPackUniqueId,
+  cellChemistry,
+  manufacturer,
+  maxVoltage,
+  minVoltage,
+  power,
+  capacity,
+  ratedCurrent,
+  maxCurrent,
+  maxTemperature,
+  session
+) => {
+  let batteryPack = new BatteryPack({
+    batteryPackUniqueId,
+    cellChemistry,
+    manufacturer,
+    maxVoltage,
+    minVoltage,
+    power,
+    capacity,
+    ratedCurrent,
+    maxCurrent,
+    maxTemperature,
+  });
+  await batteryPack.save({ session });
+};
 
 const postCreateBatteryPack = async (req, res, next) => {
   const body = async (req, res, next, session) => {
     console.log(req.body);
     await initBatteryPack(
-      req.body.batteryPackUniqueId, 
-      req.body.cellChemistry, 
-      req.body.manufacturer, 
-      req.body.maxVoltage, 
-      req.body.minVoltage, 
-      req.body.power, 
-      req.body.capacity, 
-      req.body.ratedCurrent, 
-      req.body.maxCurrent, 
-      req.body.maxTemperature, 
+      req.body.batteryPackUniqueId,
+      req.body.cellChemistry,
+      req.body.manufacturer,
+      req.body.maxVoltage,
+      req.body.minVoltage,
+      req.body.power,
+      req.body.capacity,
+      req.body.ratedCurrent,
+      req.body.maxCurrent,
+      req.body.maxTemperature,
       session
     );
 
     return {
       status: 200,
       data: {
-        message: "Battery Pack created Successfully"
-      }
-    }; 
-  }
+        message: "Battery Pack created Successfully",
+      },
+    };
+  };
   postData(req, res, next, body);
-}
+};
 
-const initMergeBatteryPackAndBmsIcs = async (batteryPackId, bmsIc, session) =>{
-  let batteryPack = await BatteryPack.findOne({ _id: batteryPackId }, null, { session });
+const initMergeBatteryPackAndBmsIcs = async (batteryPackId, bmsIc, session) => {
+  let batteryPack = await BatteryPack.findOne({ _id: batteryPackId }, null, {
+    session,
+  });
   let bmsIcs = [];
-  for(let item of bmsIc){
+  for (let item of bmsIc) {
     let ic = await BmsIc.findOne({ _id: item }, null, { session });
     bmsIcs.push(ic);
   }
   let response = { status: 200, data: {} };
-  if(batteryPack && bmsIcs.length === bmsIc.length){
+  if (batteryPack && bmsIcs.length === bmsIc.length) {
     batteryPack.bmsIc = bmsIc;
     await batteryPack.save({ session });
-    for(let item of bmsIcs){
+    for (let item of bmsIcs) {
       item.batteryPack = batteryPackId;
       await item.save({ session });
     }
     response.data.message = "IC boards merged";
-  }else{
+  } else {
     response.data.message = "Not found";
   }
   return response;
-}
+};
 
 const postMergeBatteryPackAndBmsIcs = async (req, res, next) => {
   const body = async (req, res, next, session) => {
     console.log(req.body);
     const response = await initMergeBatteryPackAndBmsIcs(
-      req.body.batteryPackId, 
-      req.body.bmsIc, 
+      req.body.batteryPackId,
+      req.body.bmsIc,
       session
     );
 
-    return response; 
-  }
+    return response;
+  };
   postData(req, res, next, body);
-}
-
+};
 
 // numTempSensorPerIC,
 // numVoltSensor,
@@ -763,6 +834,7 @@ const postMergeBatteryPackAndBmsIcs = async (req, res, next) => {
 // };
 
 export {
+  postCreateBatteryPack,
   // getAllDevices,
   // getDeviceSessions,
   // getSessionData,
@@ -772,6 +844,7 @@ export {
   // postSessionBmsData,
   // postUpdateTrip,
   postCreateBmsIc,
-  postCreateBatteryPack,
-  postMergeBatteryPackAndBmsIcs
+  postCreateDevice,
+  postMergeBatteryPackAndBmsIcs,
+  postMergeDeviceWithBatteryPack,
 };

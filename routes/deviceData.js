@@ -1,16 +1,17 @@
 import express from "express";
 import {
+  // postCreateSession,
+  // postSessionBmsData,
+  postCreateBatteryPack,
   // getAllDevices,
   // getDeviceSessions,
   // getSessionData,
   // getSessions,
   postCreateBmsIc,
-  // postCreateSession,
-  // postSessionBmsData,
-  postCreateBatteryPack,
-  postMergeBatteryPackAndBmsIcs
+  postCreateDevice,
+  postMergeBatteryPackAndBmsIcs,
+  postMergeDeviceWithBatteryPack,
 } from "../controllers/deviceDataControllers.js";
-import apiAuth from "../middlewares/apiEndPointAuth.js";
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ const router = express.Router();
 
 // router.get("/get_all_devices", apiAuth, getAllDevices);
 
-// router.get("/get_device_all_sessions/:device_id", apiAuth, getDeviceSessions);
+// router.get("/gpostCreateBatteryPack, getDeviceSessions);
 
 // // post route for data sendings
 // router.post("/session_bms_data", apiAuth, postSessionBmsData);
@@ -31,5 +32,7 @@ const router = express.Router();
 router.post("/create_bmsic", postCreateBmsIc);
 router.post("/create_battery_pack", postCreateBatteryPack);
 router.post("/merge_battery_pack_bmsic", postMergeBatteryPackAndBmsIcs);
+router.post("/create_device", postCreateDevice);
+router.post("/merge_device_batteryPack", postMergeDeviceWithBatteryPack);
 
 export default router;
