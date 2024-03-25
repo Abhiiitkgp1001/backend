@@ -15,6 +15,7 @@ const createVehicle = async (req, res, next) => {
       chassisNumber: req.body.chassisNumber,
       modelName: req.body.modelName,
       vehicleName: req.body.vehicleName,
+      archived: false,
     });
 
     vehicle = await vehicle.save({ session: session, new: true });
