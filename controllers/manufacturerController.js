@@ -51,7 +51,7 @@ const updateVehicle = async (req, res, next) => {
     if (req.body.vehicleName) {
       obj.vehicleName = req.body.vehicleName;
     }
-    const vehicle = Vehicles.findByIdAndUpdate(req.params.vehicleId, obj, {
+    const vehicle = Vehicles.findByIdAndUpdate(req.params.vehicle, obj, {
       session: session,
       new: true,
     });
