@@ -25,7 +25,8 @@ const postData = async (req, res, next, body) => {
     console.error("Transaction aborted:", err);
   } finally {
     // Ending the session
-    session.endSession();
+    await session.endSession();
+    next(err);
   }
 };
 

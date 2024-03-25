@@ -59,6 +59,15 @@ const postMergeDeviceWithBatteryPack = async (req, res, next) => {
       error.statusCode = 404;
       throw error;
     } else {
+      //check if battery pack id exists or not
+      let batteryPack = await BatteryPack.findById(req.body.batteryPackId);
+      if (!batteryPack) {
+        const error = new Error(
+          "Couldn't find BatteryPack with Id " + req.body.deviceId
+        );
+        error.statusCode = 404;
+        throw error;
+      }
       device.batteryPack = req.body.batteryPackId;
       // save device with battery pack linked
       device = await device.save({ session: session, new: true });

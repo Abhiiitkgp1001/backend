@@ -32,8 +32,8 @@ app.use((error, req, res, next) => {
   // console.log("Error occured");
   // console.log(error.data);
   res
-    .status(error.statusCode || 500)
-    .json({ message: error.message, data: error.data });
+    .status(200)
+    .json({ status: "FAIL", message: error.message, data: error.data });
 });
 
 try {

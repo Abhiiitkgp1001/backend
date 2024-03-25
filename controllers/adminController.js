@@ -367,6 +367,11 @@ const postRemoveAssignedPilot = async (req, res, next) => {
   });
 };
 
+
+const createVehicle = async (req, res, next) => {
+  
+}
+
 export {
   deleteVehicle,
   getAllPilots,
