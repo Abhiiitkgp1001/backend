@@ -72,8 +72,11 @@ const postMergeDeviceWithBatteryPack = async (req, res, next) => {
       // save device with battery pack linked
       device = await device.save({ session: session, new: true });
       return {
-        message: "Device merged with battery pack Successfully",
-        device: device,
+        status: 200,
+        data: {
+          message: "Device merged with battery pack Successfully",
+          device: device,
+        },
       };
     }
   };
@@ -93,8 +96,11 @@ const postCreateDevice = async (req, res, next) => {
     });
     device = await device.save({ session: session, new: true });
     return {
-      message: "Device created successfully",
-      device: device,
+      status: 200,
+      data: {
+        message: "Device created successfully",
+        device: device,
+      },
     };
   };
   postData(req, res, next, body);

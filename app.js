@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import adminRoutes from "./routes/admin.js";
 import authRoutes from "./routes/auth.js";
 import dataRoutes from "./routes/deviceData.js";
+import manufacturerRoutes from "./routes/manufacturerRoute.js";
 import testRoutes from "./routes/test.js";
 import redisClient from "./utils/redisClient.js";
 
@@ -24,6 +25,7 @@ app.use(bodyParser.json());
 app.use("/auth", authRoutes);
 app.use("/admin", adminRoutes);
 app.use("/data", dataRoutes);
+app.use("/manufacturer", manufacturerRoutes);
 app.use("/test", testRoutes);
 
 // app error handler middleware
@@ -32,8 +34,8 @@ app.use((error, req, res, next) => {
   // console.log("Error occured");
   // console.log(error.data);
   res
-    .status(200)
-    .json({ status: "FAIL", message: error.message, data: error.data });
+    .status(err.statusCode || 500)
+    .json({ message: error.message, data: error.data });
 });
 
 try {

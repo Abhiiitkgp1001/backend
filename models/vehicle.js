@@ -5,7 +5,7 @@ const VehicleSchema = mongoose.Schema({
     type: String,
     required: true,
   },
-  linkedPilots: {
+  allowedPilots: {
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -107,6 +107,6 @@ const VehicleSchema = mongoose.Schema({
       },
     ],
   },
-}); 
+});
 
 export default mongoose.model("Vehicles", VehicleSchema);
