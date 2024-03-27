@@ -41,15 +41,9 @@ const initBmsIc = async (
   await bmsIc.save({ session });
 };
 
-// post create bmsIc api  ---- Abhishek
-// post create battery pack ---- Abhishek
-// post create device  --- Aman
-// post merge battery pack and bms ics ---- Abhishek
-// post merge device and battery pack ---Aman
 
 const postMergeDeviceWithBatteryPack = async (req, res, next) => {
   const body = async (req, res, next, session) => {
-    console.log(req.body);
     // find device and set batterypack with that
     const device = await Device.findById(req.body.deviceId);
     if (!device) {
@@ -58,34 +52,32 @@ const postMergeDeviceWithBatteryPack = async (req, res, next) => {
       );
       error.statusCode = 404;
       throw error;
-    } else {
-      //check if battery pack id exists or not
-      let batteryPack = await BatteryPack.findById(req.body.batteryPackId);
-      if (!batteryPack) {
-        const error = new Error(
-          "Couldn't find BatteryPack with Id " + req.body.deviceId
-        );
-        error.statusCode = 404;
-        throw error;
-      }
-      device.batteryPack = req.body.batteryPackId;
-      // save device with battery pack linked
-      device = await device.save({ session: session, new: true });
-      return {
-        status: 200,
-        data: {
-          message: "Device merged with battery pack Successfully",
-          device: device,
-        },
-      };
+    } 
+    //check if battery pack id exists or not
+    let batteryPack = await BatteryPack.findById(req.body.batteryPackId);
+    if (!batteryPack) {
+      const error = new Error(
+        "Couldn't find BatteryPack with Id " + req.body.deviceId
+      );
+      error.statusCode = 404;
+      throw error;
     }
+    device.batteryPack = req.body.batteryPackId;
+    // save device with battery pack linked
+    device = await device.save({ session: session, new: true });
+    return {
+      status: 202,
+      data: {
+        message: "Device merged with battery pack Successfully",
+        device: device,
+      },
+    };
   };
   postData(req, res, next, body);
 };
 
 const postCreateDevice = async (req, res, next) => {
   const body = async (req, res, next, session) => {
-    console.log(req.body);
     const device = new Device({
       deviceUniqueId: req.body.deviceUniqueId,
       user: null,
@@ -96,7 +88,7 @@ const postCreateDevice = async (req, res, next) => {
     });
     device = await device.save({ session: session, new: true });
     return {
-      status: 200,
+      status: 201,
       data: {
         message: "Device created successfully",
         device: device,
@@ -118,7 +110,7 @@ const postCreateBmsIc = async (req, res, next) => {
       session
     );
     return {
-      status: 200,
+      status: 201,
       data: {
         message: "BMS IC created Successfully",
       },
@@ -157,7 +149,6 @@ const initBatteryPack = async (
 
 const postCreateBatteryPack = async (req, res, next) => {
   const body = async (req, res, next, session) => {
-    console.log(req.body);
     await initBatteryPack(
       req.body.batteryPackUniqueId,
       req.body.cellChemistry,
@@ -173,7 +164,7 @@ const postCreateBatteryPack = async (req, res, next) => {
     );
 
     return {
-      status: 200,
+      status: 201,
       data: {
         message: "Battery Pack created Successfully",
       },
@@ -201,7 +192,9 @@ const initMergeBatteryPackAndBmsIcs = async (batteryPackId, bmsIc, session) => {
     }
     response.data.message = "IC boards merged";
   } else {
-    response.data.message = "Not found";
+    const error = new Error(`Battery Pack or ICs not found`);
+    error.statusCode = 404;
+    throw error;
   }
   return response;
 };

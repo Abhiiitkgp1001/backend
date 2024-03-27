@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 
 const VehicleSchema = mongoose.Schema({
+  adminUser: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Users",
+  },
   registrationNumber: {
     type: String,
   },
@@ -105,6 +109,7 @@ const VehicleSchema = mongoose.Schema({
         default: null,
       },
     ],
+    default: []
   },
 });
 

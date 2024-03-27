@@ -17,6 +17,7 @@ const postData = async (req, res, next, body) => {
     let response = await body(req, res, next, session);
     // If all documents are successfully created, commit the transaction
     await session.commitTransaction();
+    await session.endSession();
     res.status(response.status).json(response.data);
     // return response;
   } catch (err) {
