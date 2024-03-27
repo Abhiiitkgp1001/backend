@@ -526,7 +526,7 @@ const updateProfile = async (req, res, next) => {
       throw error;
     }
   };
-  postData(req, res, next, body);
+  await postData(req, res, next, body);
 };
 
 export {

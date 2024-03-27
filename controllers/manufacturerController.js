@@ -28,6 +28,8 @@ const createVehicle = async (req, res, next) => {
     };
   };
   postData(req, res, next, body);
+  //   let response = await postData(req, res, next, body);
+  //   res.status(response.status).json(response.data);
 };
 
 const updateVehicle = async (req, res, next) => {
@@ -51,10 +53,11 @@ const updateVehicle = async (req, res, next) => {
     if (req.body.vehicleName) {
       obj.vehicleName = req.body.vehicleName;
     }
-    const vehicle = Vehicles.findByIdAndUpdate(req.params.vehicle, obj, {
+    const vehicle = await Vehicles.findByIdAndUpdate(req.params.vehicle, obj, {
       session: session,
       new: true,
     });
+    console.log(vehicle);
     return {
       status: 202,
       data: {

@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 const VehicleSchema = mongoose.Schema({
   registrationNumber: {
     type: String,
-    required: true,
   },
   allowedPilots: {
     type: [

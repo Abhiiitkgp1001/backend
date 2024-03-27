@@ -18,13 +18,12 @@ const postData = async (req, res, next, body) => {
     // If all documents are successfully created, commit the transaction
     await session.commitTransaction();
     res.status(response.status).json(response.data);
+    // return response;
   } catch (err) {
     console.log(`${err}`);
     // If an error occurs, abort the transaction and handle the error
     await session.abortTransaction();
     console.error("Transaction aborted:", err);
-  } finally {
-    // Ending the session
     await session.endSession();
     next(err);
   }
