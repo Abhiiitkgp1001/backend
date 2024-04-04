@@ -145,7 +145,7 @@ const removePilot = async (req, res, next) => {
     //update linked pilots
     await Vehicles.updateOne(
       { _id: adminUser._id, addedVehicles: { $in: adminUser.addedVehicles } },
-      { $pull: { "addedVehicles.$[].linkedPilots": pilotId } },
+      { $pull: { "addedVehicles.$[].allowedPilots": pilotId } },
       {
         session: session,
         new: true,
@@ -232,7 +232,7 @@ const postAddVehicle = async (req, res, next) => {
         {
           path: "addedVehicles",
           populate: {
-            path: "linkedPilots",
+            path: "allowedPilots",
           },
         },
       ]);
@@ -291,7 +291,7 @@ const getAllVehicles = async (req, res, next) => {
       path: "addedVehicles",
       populate: {
         path: "device",
-        path: "linkedPilots", // Assuming 'deviceId' is a field in the 'User' model referencing the 'Devices' model
+        path: "allowedPilots", // Assuming 'deviceId' is a field in the 'User' model referencing the 'Devices' model
       },
     });
     return {
@@ -321,7 +321,7 @@ const postAssignPilot = async (req, res, next) => {
       throw error;
     }
     pilot.allowedVehicles.push(vehicle._id);
-    vehicle.linkedPilots.push(pilot._id);
+    vehicle.allowedPilots.push(pilot._id);
     pilot = await pilot.save({ session: session, new: true });
     vehicle = await vehicle.save({ session: session, new: true });
     return {
@@ -349,7 +349,7 @@ const postRemoveAssignedPilot = async (req, res, next) => {
     const vehicle = await Vehicles.findByIdAndUpdate(
       vehicleId,
       {
-        $pull: { linkedPilots: pilotId },
+        $pull: { allowedPilots: pilotId },
       },
       { session: session, new: true }
     );
