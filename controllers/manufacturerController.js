@@ -13,7 +13,7 @@ const createVehicle = async (req, res, next) => {
       vehicleWheelType: req.body.vehicleWheelType,
       chassisNumber: req.body.chassisNumber,
       modelName: req.body.modelName,
-      vehicleName: req.body.vehicleName
+      vehicleName: req.body.vehicleName,
     });
 
     vehicle = await vehicle.save({ session: session, new: true });
@@ -70,18 +70,18 @@ const updateVehicle = async (req, res, next) => {
 const mergeDeviceWithVehicle = async (req, res, next) => {
   // check if Vehicle exists or not
   const body = async (req, res, next, session) => {
-    let vehicle = await Vehicles.findById(req.body.vehicleId,null, { session });
+    let vehicle = await Vehicles.findById(req.body.vehicleId, null, {
+      session,
+    });
     if (!vehicle) {
       const error = new Error(`Vehicle not found for given ID ${req.body.id}`);
       error.statusCode = 404;
       throw error;
-    } 
-    
-    let device = await Device.findById(req.body.deviceId,null, { session });
+    }
+
+    let device = await Device.findById(req.body.deviceId, null, { session });
     if (!device) {
-      const error = new Error(
-        `Device not found for given ID ${req.body.id}`
-      );
+      const error = new Error(`Device not found for given ID ${req.body.id}`);
       error.statusCode = 404;
       throw error;
     }

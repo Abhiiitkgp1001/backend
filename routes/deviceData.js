@@ -1,5 +1,7 @@
 import express from "express";
 import {
+  getAllTrips,
+  getAllTripsByUser,
   // postCreateSession,
   // postSessionBmsData,
   postCreateBatteryPack,
@@ -9,6 +11,9 @@ import {
   // getSessions,
   postCreateBmsIc,
   postCreateDevice,
+  postCreateTrip,
+  // postCreateSession,
+  // postSessionBmsData,
   postMergeBatteryPackAndBmsIcs,
   postMergeDeviceWithBatteryPack,
 } from "../controllers/deviceDataControllers.js";
@@ -34,5 +39,12 @@ router.post("/create_battery_pack", postCreateBatteryPack);
 router.post("/merge_battery_pack_bmsic", postMergeBatteryPackAndBmsIcs);
 router.post("/create_device", postCreateDevice);
 router.post("/merge_device_batteryPack", postMergeDeviceWithBatteryPack);
+
+// trip routes
+router.post("/create_trip", apiAuth, postCreateTrip);
+router.get("/get_all_trips/:vehicle", getAllTrips);
+router.get("/get_all_trips_user/:user", getAllTripsByUser);
+// getAllTripByUser
+// postCreateTrip
 
 export default router;

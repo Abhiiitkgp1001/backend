@@ -2,7 +2,11 @@ import BatteryPack from "../models/BatteryPack.js";
 import BmsIc from "../models/bmsIc.js";
 import Cell from "../models/cells.js";
 import Device from "../models/device.js";
+import Location from "../models/location.js";
 import TemperatureSensor from "../models/temperatureSensors.js";
+import Trip from "../models/trip.js";
+import User from "../models/user.js";
+import Vehicles from "../models/vehicle.js";
 import { postData } from "../wrappers/postController.js";
 
 const initBmsIc = async (
@@ -41,7 +45,6 @@ const initBmsIc = async (
   await bmsIc.save({ session });
 };
 
-
 const postMergeDeviceWithBatteryPack = async (req, res, next) => {
   const body = async (req, res, next, session) => {
     // find device and set batterypack with that
@@ -52,7 +55,7 @@ const postMergeDeviceWithBatteryPack = async (req, res, next) => {
       );
       error.statusCode = 404;
       throw error;
-    } 
+    }
     //check if battery pack id exists or not
     let batteryPack = await BatteryPack.findById(req.body.batteryPackId);
     if (!batteryPack) {
@@ -209,6 +212,172 @@ const postMergeBatteryPackAndBmsIcs = async (req, res, next) => {
     );
 
     return response;
+  };
+  postData(req, res, next, body);
+};
+
+const postCreateTrip = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    // lets get the trip details
+
+    let trip = new Trip({
+      device: request.body.device,
+      tripName: request.body.tripName,
+      startTime: request.body.startTime,
+      endTime: request.body.endTime,
+      location: null,
+      pilot: req.body.pilot,
+    });
+    trip = await trip.save({ session: session, new: true });
+    let location = new Location({
+      trip: trip._id,
+      timestamp: req.body.location.timestamp,
+      lattitude: req.body.location.lattitude,
+      longitude: req.body.location.longitude,
+    });
+    location = await location.save({ session: session, new: true });
+    trip.location = location._id;
+    trip = await trip.save({ session: session, new: true });
+    return {
+      status: 200,
+      data: {
+        message: "Trip created successfully",
+        trip: trip,
+      },
+    };
+  };
+  postData(req, res, next, body);
+};
+
+const getAllTrips = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    // get vehicle id
+
+    let pageSize = 30;
+    let limit = pageSize;
+    let vehicle = await Vehicles.findById(req.params.vehicle);
+    let totalItems = await Trip.countDocuments({ device: vehicle.device });
+    let totalPages = totalItems / pageSize + 1;
+    let sortCriteria = { startTime: 1 };
+    let currentPage = req.query.page || 1;
+    let offset = (currentPage - 1) * pageSize;
+    let trips;
+    let nextPage;
+    if (currentPage < totalPages) {
+      trips = [];
+      nextPage = currentPage;
+    } else {
+      trips = await Trip.find({ device: vehicle.device })
+        .sort(sortCriteria)
+        .skip(offset)
+        .limit(limit)
+        .populate({
+          path: "location",
+        })
+        .exec();
+      nextPage = currentPage + 1;
+    }
+
+    const currentUrlWithPathParams = req.baseUrl + req.path;
+    let prevPage;
+    if (currentPage > 1) {
+      prevPage = currentPage - 1;
+    } else {
+      prevPage = undefined;
+    }
+
+    let prevUrl = currentUrlWithPathParams + `?page=${prevPage}`;
+    let nextUrl = currentUrlWithPathParams + `?page=${nextPage}`;
+    let pagination = {
+      totalRecords: pageSize,
+      currentPage: currentPage,
+      totalPages: totalPages,
+      nextUrl: nextUrl,
+      prevUrl: prevUrl,
+    };
+    return {
+      status: 200,
+      data: {
+        trips: trips,
+        pagination: pagination,
+      },
+    };
+  };
+
+  postData(req, res, next, body);
+};
+
+const getAllTripByUser = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    // get userId
+    let pilots = [];
+    let user = await User.findById(req.params.user);
+    if (!user) {
+      const error = new Error("User not found with given Id");
+      error.statusCode = 404;
+      throw error;
+    }
+    if (user.admin) {
+      pilots.push(...user.childUsers);
+    }
+    pilots.push(user._id);
+
+    // get all Trips
+    let pageSize = 30;
+    let limit = pageSize;
+    let totalItems = await Trip.countDocuments({ pilot: { $in: pilots } });
+    let totalPages = totalItems / pageSize + 1;
+    let sortCriteria = { startTime: 1 };
+    let currentPage = req.query.page || 1;
+    let offset = (currentPage - 1) * pageSize;
+    let trips;
+    let nextPage;
+    if (currentPage < totalPages) {
+      trips = [];
+      nextPage = currentPage;
+    } else {
+      trips = await Trip.find({ pilot: { $in: pilots } })
+        .sort(sortCriteria)
+        .skip(offset)
+        .limit(limit)
+        .populate({
+          path: "location",
+        })
+        .exec();
+      nextPage = currentPage + 1;
+    }
+
+    const currentUrlWithPathParams = req.baseUrl + req.path;
+    let prevPage;
+    if (currentPage > 1) {
+      prevPage = currentPage - 1;
+    } else {
+      prevPage = undefined;
+    }
+
+    let prevUrl = currentUrlWithPathParams + `?page=${prevPage}`;
+    let nextUrl = currentUrlWithPathParams + `?page=${nextPage}`;
+    let pagination = {
+      totalRecords: pageSize,
+      currentPage: currentPage,
+      totalPages: totalPages,
+      nextUrl: nextUrl,
+      prevUrl: prevUrl,
+    };
+    return {
+      status: 200,
+      data: {
+        trips: trips,
+        pagination: pagination,
+      },
+    };
+  };
+  postData(req, res, next, body);
+};
+
+const getAllTripsByTimeStamp = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    
   };
   postData(req, res, next, body);
 };
@@ -842,6 +1011,17 @@ const postMergeBatteryPackAndBmsIcs = async (req, res, next) => {
 // };
 
 export {
+  getAllTripByUser,
+  getAllTrips,
+  getAllTripsByTimeStamp,
+  // getAllDevices,
+  // getDeviceSessions,
+  // getSessionData,
+  // getSessions,
+  // postCreateSession,
+  // postCreateTrip,
+  // postSessionBmsData,
+  // postUpdateTrip,
   postCreateBatteryPack,
   // getAllDevices,
   // getDeviceSessions,
@@ -853,6 +1033,7 @@ export {
   // postUpdateTrip,
   postCreateBmsIc,
   postCreateDevice,
+  postCreateTrip,
   postMergeBatteryPackAndBmsIcs,
   postMergeDeviceWithBatteryPack,
 };
