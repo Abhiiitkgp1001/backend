@@ -219,22 +219,22 @@ const postMergeBatteryPackAndBmsIcs = async (req, res, next) => {
 const postCreateTrip = async (req, res, next) => {
   const body = async (req, res, next, session) => {
     // lets get the trip details
-
-    let trip = new Trip({
-      device: request.body.device,
-      tripName: request.body.tripName,
-      startTime: request.body.startTime,
-      endTime: request.body.endTime,
-      location: null,
-      pilot: req.body.pilot,
-    });
+    let trip = {};
+    if(req.body.device) trip.device = req.body.device;
+    if(req.body.tripName) trip.tripName = req.body.tripName;
+    if(req.body.startTime) trip.startTime = req.body.startTime;
+    if(req.body.endTime) trip.endTime = req.body.endTime;
+    if(req.body.location) trip.location = req.body.location;
+    if(req.body.pilot) trip.pilot = req.body.pilot;
+    if(req.body.state) trip.state = req.body.state;
+    trip = new Trip(trip);
     trip = await trip.save({ session: session, new: true });
-    let location = new Location({
-      trip: trip._id,
-      timestamp: req.body.location.timestamp,
-      lattitude: req.body.location.lattitude,
-      longitude: req.body.location.longitude,
-    });
+    let location = {};
+    location["trip"] = trip._id;
+    if(req.body.timestamp) trip.state = req.body.timestamp;
+    if(req.body.lattitude) trip.state = req.body.lattitude;
+    if(req.body.longitude) trip.state = req.body.longitude;
+    location = new Location(location);
     location = await location.save({ session: session, new: true });
     trip.location = location._id;
     trip = await trip.save({ session: session, new: true });
@@ -257,15 +257,14 @@ const getAllTrips = async (req, res, next) => {
     let limit = pageSize;
     let vehicle = await Vehicles.findById(req.params.vehicle);
     let totalItems = await Trip.countDocuments({ device: vehicle.device });
-    let totalPages = totalItems / pageSize + 1;
+    let totalPages = totalItems % pageSize === 0 ? totalItems/pageSize : Math.floor(totalItems/pageSize) + 1;
     let sortCriteria = { startTime: 1 };
     let currentPage = req.query.page || 1;
     let offset = (currentPage - 1) * pageSize;
     let trips;
-    let nextPage;
-    if (currentPage < totalPages) {
+    let nextPage = null;
+    if (currentPage > totalPages) {
       trips = [];
-      nextPage = currentPage;
     } else {
       trips = await Trip.find({ device: vehicle.device })
         .sort(sortCriteria)
@@ -278,16 +277,14 @@ const getAllTrips = async (req, res, next) => {
       nextPage = currentPage + 1;
     }
 
-    const currentUrlWithPathParams = req.baseUrl + req.path;
-    let prevPage;
+    const currentUrlWithPathParams = process.env.BASE_URL + req.path;
+    let prevPage = null;
     if (currentPage > 1) {
       prevPage = currentPage - 1;
-    } else {
-      prevPage = undefined;
-    }
+    } 
 
-    let prevUrl = currentUrlWithPathParams + `?page=${prevPage}`;
-    let nextUrl = currentUrlWithPathParams + `?page=${nextPage}`;
+    let prevUrl = prevPage === null ? null : currentUrlWithPathParams + `?page=${prevPage}`;
+    let nextUrl = nextPage === null ? null : currentUrlWithPathParams + `?page=${nextPage}`;
     let pagination = {
       totalRecords: pageSize,
       currentPage: currentPage,
@@ -326,15 +323,14 @@ const getAllTripByUser = async (req, res, next) => {
     let pageSize = 30;
     let limit = pageSize;
     let totalItems = await Trip.countDocuments({ pilot: { $in: pilots } });
-    let totalPages = totalItems / pageSize + 1;
+    let totalPages = totalItems % pageSize === 0 ? totalItems/pageSize : Math.floor(totalItems/pageSize) + 1;
     let sortCriteria = { startTime: 1 };
     let currentPage = req.query.page || 1;
     let offset = (currentPage - 1) * pageSize;
     let trips;
-    let nextPage;
+    let nextPage = null;
     if (currentPage < totalPages) {
       trips = [];
-      nextPage = currentPage;
     } else {
       trips = await Trip.find({ pilot: { $in: pilots } })
         .sort(sortCriteria)
@@ -347,14 +343,11 @@ const getAllTripByUser = async (req, res, next) => {
       nextPage = currentPage + 1;
     }
 
-    const currentUrlWithPathParams = req.baseUrl + req.path;
-    let prevPage;
+    const currentUrlWithPathParams = process.env.BASE_URL + req.path;
+    let prevPage = null;
     if (currentPage > 1) {
       prevPage = currentPage - 1;
-    } else {
-      prevPage = undefined;
-    }
-
+    } 
     let prevUrl = currentUrlWithPathParams + `?page=${prevPage}`;
     let nextUrl = currentUrlWithPathParams + `?page=${nextPage}`;
     let pagination = {

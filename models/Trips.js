@@ -1,23 +1,23 @@
 import mongoose from "mongoose";
-
-const SessionSchema = new mongoose.Schema({
+import { tripEnums } from "../enums/tripEnum";
+import { generateCurTime, generateTripName } from "../utils/helper";
+const TripSchema = new mongoose.Schema({
   device: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Devices",
     required: true,
   },
   tripName: {
-    // wiil ask
     type: String,
-    required: true,
+    default: generateTripName()
   },
   startTime: {
     type: Date,
-    required: true,
+    required: generateCurTime(),
   },
   endTime: {
     type: Date,
-    required: true,
+    required: generateCurTime(),
   },
   location: {
     type: [
@@ -26,6 +26,7 @@ const SessionSchema = new mongoose.Schema({
         ref: "Locations",
       },
     ],
+    default: null
   },
   pilot: {
     type: mongoose.Schema.Types.ObjectId,
@@ -39,6 +40,10 @@ const SessionSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  state:{
+    type: String,
+    default: tripEnums.STATIC
+  }
 });
 
-export default mongoose.model("Trips", SessionSchema);
+export default mongoose.model("Trips", TripSchema);

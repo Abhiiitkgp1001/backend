@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { vehicleEnum } from "../enums/vehicleEnum";
 
 const VehicleSchema = mongoose.Schema({
   adminUser: {
@@ -19,7 +20,7 @@ const VehicleSchema = mongoose.Schema({
   vehicleLoadType: {
     type: String, // heavy or light weight
     required: true,
-    default: "LIGHT",
+    default: vehicleEnum.LIGHT,
   },
   vehicleWheelType: {
     type: Number, // vehicle wheel type 2 , 3 more
