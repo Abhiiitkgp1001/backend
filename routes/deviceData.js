@@ -2,6 +2,8 @@ import express from "express";
 import {
   getAllTripByUser,
   getAllTrips,
+  getAllTripsByTimeStampAndVehicle,
+  getAllTripsByTimeStampAndUser,
   // postCreateSession,
   // postSessionBmsData,
   postCreateBatteryPack,
@@ -44,6 +46,8 @@ router.post("/merge_device_batteryPack", postMergeDeviceWithBatteryPack);
 router.post("/create_trip", postCreateTrip);
 router.get("/get_all_trips/:vehicle", getAllTrips);
 router.get("/get_all_trips_user/:user", getAllTripByUser);
+router.get("/get_all_trips_timestamp_user/:user", getAllTripsByTimeStampAndUser);
+router.get("/get_all_trips_timestamp/:vehicle", getAllTripsByTimeStampAndVehicle);
 // getAllTripByUser
 // postCreateTrip
 

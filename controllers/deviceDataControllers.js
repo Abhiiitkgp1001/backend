@@ -348,8 +348,8 @@ const getAllTripByUser = async (req, res, next) => {
     if (currentPage > 1) {
       prevPage = currentPage - 1;
     } 
-    let prevUrl = currentUrlWithPathParams + `?page=${prevPage}`;
-    let nextUrl = currentUrlWithPathParams + `?page=${nextPage}`;
+    let prevUrl = prevPage === null ? null : currentUrlWithPathParams + `?page=${prevPage}`;
+    let nextUrl = nextPage === null ? null : currentUrlWithPathParams + `?page=${nextPage}`;
     let pagination = {
       totalRecords: pageSize,
       currentPage: currentPage,
@@ -368,13 +368,153 @@ const getAllTripByUser = async (req, res, next) => {
   postData(req, res, next, body);
 };
 
-const getAllTripsByTimeStamp = async (req, res, next) => {
+const getAllTripsByTimeStampAndVehicle = async (req, res, next) => {
   const body = async (req, res, next, session) => {
-    
+    // get vehicle id
+
+    let pageSize = 30;
+    let limit = pageSize;
+    let vehicle = await Vehicles.findById(req.params.vehicle);
+    let totalItems = await Trip.countDocuments({ device: vehicle.device });
+    let totalPages = totalItems % pageSize === 0 ? totalItems/pageSize : Math.floor(totalItems/pageSize) + 1;
+    let sortCriteria = { startTime: 1 };
+    let currentPage = req.query.page || 1;
+    let offset = (currentPage - 1) * pageSize;
+    let trips;
+    let nextPage = null;
+
+    let startTimeGiven = req.query.startTime;
+    let endTimeGiven = req.query.endTime;
+    if (currentPage > totalPages) {
+      trips = [];
+    } else {
+      trips = await Trip.find({
+        $and: [
+            { device: vehicle.device },
+            { 
+              $or: [
+                { startTime: { $lte: startTimeGiven, $lte: endTimeGiven }, endTime: { $gte: startTimeGiven, $gte: endTimeGiven } },
+                { startTime: { $lte: startTimeGiven, $lte: endTimeGiven }, endTime: { $gte: startTimeGiven, $lte: endTimeGiven } },
+                { startTime: { $gte: startTimeGiven, $lte: endTimeGiven }, endTime: { $gte: startTimeGiven, $gte: endTimeGiven } },
+                { startTime: { $gte: startTimeGiven, $lte: endTimeGiven }, endTime: { $gte: startTimeGiven, $lte: endTimeGiven } }
+              ] 
+            }
+        ]
+        })
+        .sort(sortCriteria)
+        .skip(offset)
+        .limit(limit)
+        .populate({
+          path: "location",
+        })
+        .exec();
+      nextPage = currentPage + 1;
+    }
+
+    const currentUrlWithPathParams = process.env.BASE_URL + req.path;
+    let prevPage = null;
+    if (currentPage > 1) {
+      prevPage = currentPage - 1;
+    } 
+
+    let prevUrl = prevPage === null ? null : currentUrlWithPathParams + `?page=${prevPage}`;
+    let nextUrl = nextPage === null ? null : currentUrlWithPathParams + `?page=${nextPage}`;
+    let pagination = {
+      totalRecords: pageSize,
+      currentPage: currentPage,
+      totalPages: totalPages,
+      nextUrl: nextUrl,
+      prevUrl: prevUrl,
+    };
+    return {
+      status: 200,
+      data: {
+        trips: trips,
+        pagination: pagination,
+      },
+    };
   };
   postData(req, res, next, body);
 };
 
+const getAllTripsByTimeStampAndUser = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    // get userId
+    let pilots = [];
+    let user = await User.findById(req.params.user);
+    if (!user) {
+      const error = new Error("User not found with given Id");
+      error.statusCode = 404;
+      throw error;
+    }
+    if (user.admin) {
+      pilots.push(...user.childUsers);
+    }
+    pilots.push(user._id);
+
+    // get all Trips
+    let pageSize = 30;
+    let limit = pageSize;
+    let totalItems = await Trip.countDocuments({ pilot: { $in: pilots } });
+    let totalPages = totalItems % pageSize === 0 ? totalItems/pageSize : Math.floor(totalItems/pageSize) + 1;
+    let sortCriteria = { startTime: 1 };
+    let currentPage = req.query.page || 1;
+    let offset = (currentPage - 1) * pageSize;
+    let trips;
+    let nextPage = null;
+
+    let startTimeGiven = req.query.startTime;
+    let endTimeGiven = req.query.endTime;
+    if (currentPage < totalPages) {
+      trips = [];
+    } else {
+      trips = await Trip.find({
+          $and: [
+              { pilot: { $in: pilots } },
+              { 
+                $or: [
+                  { startTime: { $lte: startTimeGiven, $lte: endTimeGiven }, endTime: { $gte: startTimeGiven, $gte: endTimeGiven } },
+                  { startTime: { $lte: startTimeGiven, $lte: endTimeGiven }, endTime: { $gte: startTimeGiven, $lte: endTimeGiven } },
+                  { startTime: { $gte: startTimeGiven, $lte: endTimeGiven }, endTime: { $gte: startTimeGiven, $gte: endTimeGiven } },
+                  { startTime: { $gte: startTimeGiven, $lte: endTimeGiven }, endTime: { $gte: startTimeGiven, $lte: endTimeGiven } }
+                ] 
+              }
+          ]
+        })
+        .sort(sortCriteria)
+        .skip(offset)
+        .limit(limit)
+        .populate({
+          path: "location",
+        })
+        .exec();
+      nextPage = currentPage + 1;
+    }
+
+    const currentUrlWithPathParams = process.env.BASE_URL + req.path;
+    let prevPage = null;
+    if (currentPage > 1) {
+      prevPage = currentPage - 1;
+    } 
+    let prevUrl = prevPage === null ? null : currentUrlWithPathParams + `?page=${prevPage}`;
+    let nextUrl = nextPage === null ? null : currentUrlWithPathParams + `?page=${nextPage}`;
+    let pagination = {
+      totalRecords: pageSize,
+      currentPage: currentPage,
+      totalPages: totalPages,
+      nextUrl: nextUrl,
+      prevUrl: prevUrl,
+    };
+    return {
+      status: 200,
+      data: {
+        trips: trips,
+        pagination: pagination,
+      },
+    };
+  };
+  postData(req, res, next, body);
+};
 // numTempSensorPerIC,
 // numVoltSensor,
 // let tempSensors = [];
@@ -1006,7 +1146,8 @@ const getAllTripsByTimeStamp = async (req, res, next) => {
 export {
   getAllTripByUser,
   getAllTrips,
-  getAllTripsByTimeStamp,
+  getAllTripsByTimeStampAndVehicle,
+  getAllTripsByTimeStampAndUser,
   // getAllDevices,
   // getDeviceSessions,
   // getSessionData,
