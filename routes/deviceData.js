@@ -4,6 +4,8 @@ import {
   getAllIcSeries,
   getAllTripByUser,
   getAllTrips,
+  getAllTripsByTimeStampAndUser,
+  getAllTripsByTimeStampAndVehicle,
   // postCreateSession,
   // postSessionBmsData,
   postCreateBatteryPack,
@@ -54,5 +56,16 @@ router.get("/get_all_ic_series", getAllIcSeries);
 router.post("/create_trip", postCreateTrip);
 router.get("/get_all_trips/:vehicle", getAllTrips);
 router.get("/get_all_trips_user/:user", getAllTripByUser);
+
+router.get(
+  "/get_all_trips_timestamp_user/:user",
+  getAllTripsByTimeStampAndUser
+);
+router.get(
+  "/get_all_trips_timestamp/:vehicle",
+  getAllTripsByTimeStampAndVehicle
+);
+// getAllTripByUser
+// postCreateTrip
 
 export default router;
