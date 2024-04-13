@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const LocationSchema = mongoose.Schema({
+const LocationSchema = new mongoose.Schema({
   trip: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Trips",

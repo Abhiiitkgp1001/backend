@@ -1,5 +1,7 @@
 import express from "express";
 import {
+  getAllBMSIcs,
+  getAllIcSeries,
   getAllTripByUser,
   getAllTrips,
   // postCreateSession,
@@ -11,6 +13,7 @@ import {
   // getSessions,
   postCreateBmsIc,
   postCreateDevice,
+  postCreateSeries,
   postCreateTrip,
   // postCreateSession,
   // postSessionBmsData,
@@ -40,11 +43,16 @@ router.post("/merge_battery_pack_bmsic", postMergeBatteryPackAndBmsIcs);
 router.post("/create_device", postCreateDevice);
 router.post("/merge_device_batteryPack", postMergeDeviceWithBatteryPack);
 
+// get routes for bmsic
+router.get("/all_bms_ics", getAllBMSIcs);
+
+// for crweating series routes
+router.post("/create_series", postCreateSeries);
+router.get("/get_all_ic_series", getAllIcSeries);
+
 // trip routes
 router.post("/create_trip", postCreateTrip);
 router.get("/get_all_trips/:vehicle", getAllTrips);
 router.get("/get_all_trips_user/:user", getAllTripByUser);
-// getAllTripByUser
-// postCreateTrip
 
 export default router;

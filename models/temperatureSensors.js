@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const tempSensorsSchema = mongoose.Schema({
+const tempSensorsSchema = new mongoose.Schema({
   bmsIc: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "BmsIcs",

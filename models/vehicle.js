@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const VehicleSchema = mongoose.Schema({
+const VehicleSchema = new mongoose.Schema({
   adminUser: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Users",
@@ -109,7 +109,7 @@ const VehicleSchema = mongoose.Schema({
         default: null,
       },
     ],
-    default: []
+    default: [],
   },
 });
 

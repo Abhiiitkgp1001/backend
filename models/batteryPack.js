@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const batteryPackSchema = mongoose.Schema({
+const batteryPackSchema = new mongoose.Schema({
   batteryPackUniqueId: {
     type: String,
     default: "",

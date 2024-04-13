@@ -8,10 +8,10 @@ const postData = async (req, res, next, body) => {
     // Start a MongoDB transaction
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      const err = new Error("Validation Failed");
-      err.statusCode = 409;
-      err.data = errors.array();
-      throw err;
+      const error = new Error("Validation Failed");
+      error.statusCode = 409;
+      error.data = errors.array();
+      throw error;
     }
 
     let response = await body(req, res, next, session);
@@ -21,10 +21,10 @@ const postData = async (req, res, next, body) => {
     res.status(response.status).json(response.data);
     // return response;
   } catch (err) {
-    console.log(`${err}`);
+    console.log(`error in postData: ${err}`);
     // If an error occurs, abort the transaction and handle the error
     await session.abortTransaction();
-    console.error("Transaction aborted:", err);
+    console.error("Transaction aborted:", err.message);
     await session.endSession();
     next(err);
   }

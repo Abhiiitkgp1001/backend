@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const cellSchema = mongoose.Schema({
+const cellSchema = new mongoose.Schema({
   bmsIc: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "BmsIcs",

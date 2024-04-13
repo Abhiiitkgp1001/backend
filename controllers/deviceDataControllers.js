@@ -1,13 +1,32 @@
 import BatteryPack from "../models/BatteryPack.js";
+import Trip from "../models/Trips.js";
 import BmsIc from "../models/bmsIc.js";
 import Cell from "../models/cells.js";
 import Device from "../models/device.js";
+import ICSeries from "../models/ic_series.js";
 import Location from "../models/location.js";
 import TemperatureSensor from "../models/temperatureSensors.js";
-import Trip from "../models/trip.js";
 import User from "../models/user.js";
 import Vehicles from "../models/vehicle.js";
 import { postData } from "../wrappers/postController.js";
+
+const createGivenDigitString = (number, char, length) => {
+  // Convert number to string
+  let numString = number.toString();
+  console.log(numString);
+  // Calculate the number of 'X' characters needed
+  let numX = length - numString.length;
+
+  // If the number of digits is greater than 16, return the first 16 digits
+  if (numString.length > length) {
+    return numString.slice(0, length);
+  }
+
+  // Pad the string with 'X' characters to make it 16 digits long
+  let paddedString = char.repeat(numX) + numString;
+
+  return paddedString;
+};
 
 const initBmsIc = async (
   bmsUniqueId,
@@ -15,34 +34,46 @@ const initBmsIc = async (
   bmsName,
   noOfCells,
   noOfTemperatureSensors,
+  currentCapacity,
+  series,
+  imu,
+  gsm,
+  gps,
+  bluetooth,
   session
 ) => {
   let bmsIc = new BmsIc({
     isMaster: isMaster,
     bmsUniqueId: bmsUniqueId,
     bmsName: bmsName,
+    currentCapacity: currentCapacity,
+    series: series,
+    imu: imu,
+    gps: gps,
+    gsm: gsm,
+    bluetooth: bluetooth,
   });
 
-  bmsIc = await bmsIc.save({ new: true }, { session });
+  bmsIc = await bmsIc.save({ new: true, session: session });
   let cells = [];
   for (let i = 0; i < noOfCells; i++) {
     let cell = new Cell({ bmsIc: bmsIc._id });
-    cell = await cell.save({ new: true }, { session });
+    cell = await cell.save({ new: true, session: session });
     cells.push(cell._id);
   }
   let temperatureSensors = [];
   for (let i = 0; i < noOfTemperatureSensors; i++) {
     let temperatureSensor = new TemperatureSensor({ bmsIc: bmsIc._id });
-    temperatureSensor = await temperatureSensor.save(
-      { new: true },
-      { session }
-    );
+    temperatureSensor = await temperatureSensor.save({
+      new: true,
+      session: session,
+    });
     temperatureSensors.push(temperatureSensor._id);
   }
   bmsIc.cells = cells;
   bmsIc.temperatureSensors = temperatureSensors;
 
-  await bmsIc.save({ session });
+  await bmsIc.save({ session: session });
 };
 
 const postMergeDeviceWithBatteryPack = async (req, res, next) => {
@@ -102,22 +133,153 @@ const postCreateDevice = async (req, res, next) => {
 };
 
 const postCreateBmsIc = async (req, res, next) => {
-  console.log(req.body);
+  console.log("body ", req.body);
+
   const body = async (req, res, next, session) => {
-    await initBmsIc(
-      req.body.bmsUniqueId,
-      req.body.isMaster,
-      req.body.bmsName,
-      req.body.noOfCells,
-      req.body.noOfTemperatureSensors,
-      session
-    );
+    // get current count of devices with given series name then add count for each series ic count
+    let series = await ICSeries.findOne({ series: req.body.series });
+    let count = parseInt(series.countTotal);
+    const BMS_pref = (req.body.isMaster ? "Master" : "Worker") + "BMS_";
+    if (req.body.icCount == 1) {
+      count = count + 1;
+      let serialNo = count;
+      let uniqueId = createGivenDigitString(
+        req.body.series +
+          createGivenDigitString(serialNo, "0", 15) +
+          createGivenDigitString(req.body.noOfTemperatureSensors, "X", 2) +
+          createGivenDigitString(req.body.noOfCells, "X", 2) +
+          createGivenDigitString(req.body.currentCapacity, "X", 2),
+        "_",
+        24
+      );
+      await initBmsIc(
+        uniqueId,
+        req.body.isMaster,
+        BMS_pref + createGivenDigitString(serialNo, "0", 15) + series.series,
+        req.body.noOfCells,
+        req.body.noOfTemperatureSensors,
+        req.body.currentCapacity,
+        req.body.series,
+        req.body.imu,
+        req.body.gsm,
+        req.body.gps,
+        req.body.bluetooth,
+        session
+      );
+      // update count for given series
+      await ICSeries.findOneAndUpdate(
+        { series: req.body.series },
+        { countTotal: count },
+        { session: session }
+      );
+      return {
+        status: 201,
+        data: {
+          message: "BMS IC created Successfully",
+        },
+      };
+    } else {
+      // if count for given ics is > 1
+      for (let i = 0; i < parseInt(req.body.icCount); i++) {
+        count = count + 1;
+        let serialNo = count;
+        let uniqueId = createGivenDigitString(
+          req.body.series +
+            createGivenDigitString(serialNo, "0", 15) +
+            createGivenDigitString(req.body.noOfTemperatureSensors, "X", 2) +
+            createGivenDigitString(req.body.noOfCells, "X", 2) +
+            createGivenDigitString(req.body.currentCapacity, "X", 2),
+          "_",
+          24
+        );
+        await initBmsIc(
+          uniqueId,
+          req.body.isMaster,
+          BMS_pref + createGivenDigitString(serialNo, "0", 15) + series.series,
+          req.body.noOfCells,
+          req.body.noOfTemperatureSensors,
+          req.body.currentCapacity,
+          req.body.series,
+          req.body.imu,
+          req.body.gsm,
+          req.body.gps,
+          req.body.bluetooth,
+          session
+        );
+      }
+      // update count for given series
+      await ICSeries.findOneAndUpdate(
+        { series: req.body.series },
+        { countTotal: count },
+        { session: session }
+      );
+      return {
+        status: 201,
+        data: {
+          message: "BMS ICs created Successfully",
+        },
+      };
+    }
+  };
+  postData(req, res, next, body);
+};
+
+const getAllBMSIcs = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    // get query parameter to check whether we want all master bms or not
+    let master;
+    const isMaster = req.query.isMaster;
+
+    // get all bms ics depending of type of bmsIC
+    const bmsIcs = await BmsIc.find();
     return {
-      status: 201,
+      status: 200,
       data: {
-        message: "BMS IC created Successfully",
+        bmsIcs: bmsIcs,
       },
     };
+  };
+  postData(req, res, next, body);
+};
+
+const getAllIcSeries = async (req, res, next) => {
+  const body = async (req, res, next, session) => {
+    // get all series
+    const allSeries = await ICSeries.find();
+    return {
+      status: 200,
+      data: {
+        bmsIcSeries: allSeries,
+      },
+    };
+  };
+  postData(req, res, next, body);
+};
+
+const postCreateSeries = async (req, res, next) => {
+  // console.log(req.body);
+  const body = async (req, res, next, session) => {
+    const s = await ICSeries.findOne({ series: req.body.series });
+    if (s) {
+      return {
+        status: 200,
+        data: {
+          message: "Series Allready Exists",
+        },
+      };
+    } else {
+      let bmsIcSeries = new ICSeries({
+        series: req.body.series,
+      });
+      bmsIcSeries = await bmsIcSeries.save({ new: true, session: session });
+      return {
+        status: 200,
+        data: {
+          message: "Series Created Successfully",
+          icSeries: bmsIcSeries,
+        },
+      };
+    }
   };
   postData(req, res, next, body);
 };
@@ -376,9 +538,7 @@ const getAllTripByUser = async (req, res, next) => {
 };
 
 const getAllTripsByTimeStamp = async (req, res, next) => {
-  const body = async (req, res, next, session) => {
-    
-  };
+  const body = async (req, res, next, session) => {};
   postData(req, res, next, body);
 };
 
@@ -1011,6 +1171,16 @@ const getAllTripsByTimeStamp = async (req, res, next) => {
 // };
 
 export {
+  getAllBMSIcs,
+  // getAllDevices,
+  // getDeviceSessions,
+  // getSessionData,
+  // getSessions,
+  // postCreateSession,
+  // postCreateTrip,
+  // postSessionBmsData,
+  // postUpdateTrip,
+  getAllIcSeries,
   getAllTripByUser,
   getAllTrips,
   getAllTripsByTimeStamp,
@@ -1023,16 +1193,9 @@ export {
   // postSessionBmsData,
   // postUpdateTrip,
   postCreateBatteryPack,
-  // getAllDevices,
-  // getDeviceSessions,
-  // getSessionData,
-  // getSessions,
-  // postCreateSession,
-  // postCreateTrip,
-  // postSessionBmsData,
-  // postUpdateTrip,
   postCreateBmsIc,
   postCreateDevice,
+  postCreateSeries,
   postCreateTrip,
   postMergeBatteryPackAndBmsIcs,
   postMergeDeviceWithBatteryPack,

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const PilotStatsSchema = mongoose.Schema({
+const PilotStatsSchema =new  mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Users",

@@ -1,18 +1,42 @@
 import mongoose from "mongoose";
 
-const BmsSchema = new mongoose.Schema({
+const BmsSchema = mongoose.Schema({
   bmsUniqueId: {
     type: String,
-    required: true
+    required: true,
   },
   isMaster: {
+    type: Boolean,
+    default: false,
+  },
+  currentCapacity: {
+    type: Number,
+    default: 0,
+  },
+  series: {
+    type: String,
+    required: true,
+  },
+  imu: {
+    type: Boolean,
+    default: false,
+  },
+  gps: {
+    type: Boolean,
+    default: false,
+  },
+  gsm: {
+    type: Boolean,
+    default: false,
+  },
+  bluetooth: {
     type: Boolean,
     default: false,
   },
   batteryPack: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "BatteryPacks",
-    default: null
+    default: null,
   },
   bmsName: {
     type: String,
@@ -21,7 +45,7 @@ const BmsSchema = new mongoose.Schema({
   device: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Devices",
-    default: null
+    default: null,
   },
   cells: {
     type: [
@@ -30,26 +54,26 @@ const BmsSchema = new mongoose.Schema({
         ref: "Cells",
       },
     ],
-    default: []
+    default: [],
   },
   current: {
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Currents",
-    },
+      },
     ],
-    default: []
+    default: [],
   },
   temperatureSensors: {
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref:"TemperatureSensors"
-      }
+        ref: "TemperatureSensors",
+      },
     ],
-    default: []
-  }
+    default: [],
+  },
 });
 
 export default mongoose.model("BmsIcs", BmsSchema);
