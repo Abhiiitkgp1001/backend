@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { generateCurTime } from "../utils/helper";
+import { generateCurTime } from "../utils/helper.js";
 
 const LocationSchema = new mongoose.Schema({
   trip: {
@@ -8,7 +8,7 @@ const LocationSchema = new mongoose.Schema({
   },
   timestamp: {
     type: Date,
-    default: generateCurTime()
+    default: generateCurTime(),
   },
   lattitude: {
     type: Number,

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { vehicleEnum } from "../enums/vehicleEnum";
+import { vehicleEnum } from "../enums/vehicleEnum.js";
 
 const VehicleSchema = new mongoose.Schema({
   adminUser: {
