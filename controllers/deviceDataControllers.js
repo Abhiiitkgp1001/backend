@@ -4,7 +4,7 @@ import BmsIc from "../models/bmsIc.js";
 import Cell from "../models/cells.js";
 import Device from "../models/device.js";
 import ICSeries from "../models/icSeries.js";
-import Location from "../models/location.js";
+import Location from "../models/locations.js";
 import TemperatureSensor from "../models/temperatureSensors.js";
 import User from "../models/user.js";
 import Vehicles from "../models/vehicle.js";
