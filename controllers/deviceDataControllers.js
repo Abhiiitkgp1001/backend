@@ -3,7 +3,7 @@ import Trip from "../models/Trips.js";
 import BmsIc from "../models/bmsIc.js";
 import Cell from "../models/cells.js";
 import Device from "../models/device.js";
-import ICSeries from "../models/ic_series.js";
+import ICSeries from "../models/icSeries.js";
 import Location from "../models/location.js";
 import TemperatureSensor from "../models/temperatureSensors.js";
 import User from "../models/user.js";
@@ -231,7 +231,48 @@ const postCreateBmsIc = async (req, res, next) => {
     let series = await ICSeries.findOne({ series: req.body.series });
     let count = parseInt(series.countTotal);
     const BMS_pref = (req.body.isMaster ? "Master" : "Worker") + "BMS_";
-    if (req.body.icCount == 1) {
+    // if (req.body.icCount == 1) {
+    //   count = count + 1;
+    //   let serialNo = count;
+    //   let uniqueId = createGivenDigitString(
+    //     req.body.series +
+    //       createGivenDigitString(serialNo, "0", 15) +
+    //       createGivenDigitString(req.body.noOfTemperatureSensors, "X", 2) +
+    //       createGivenDigitString(req.body.noOfCells, "X", 2) +
+    //       createGivenDigitString(req.body.currentCapacity, "X", 2),
+    //     "_",
+    //     24
+    //   );
+    //   await initBmsIc(
+    //     uniqueId,
+    //     req.body.isMaster,
+    //     BMS_pref + createGivenDigitString(serialNo, "0", 15) + series.series,
+    //     req.body.noOfCells,
+    //     req.body.noOfTemperatureSensors,
+    //     req.body.currentCapacity,
+    //     req.body.series,
+    //     req.body.imu,
+    //     req.body.gsm,
+    //     req.body.gps,
+    //     req.body.bluetooth,
+    //     session
+    //   );
+    //   // update count for given series
+    //   await ICSeries.findOneAndUpdate(
+    //     { series: req.body.series },
+    //     { countTotal: count },
+    //     { session: session }
+    //   );
+    //   return {
+    //     status: 201,
+    //     data: {
+    //       message: "BMS IC created Successfully",
+    //     },
+    //   };
+    // } else {
+    // if count for given ics is > 1
+    let bulkBmsdocs = [];
+    for (let i = 0; i < parseInt(req.body.icCount); i++) {
       count = count + 1;
       let serialNo = count;
       let uniqueId = createGivenDigitString(
@@ -243,143 +284,102 @@ const postCreateBmsIc = async (req, res, next) => {
         "_",
         24
       );
-      await initBmsIc(
-        uniqueId,
-        req.body.isMaster,
-        BMS_pref + createGivenDigitString(serialNo, "0", 15) + series.series,
-        req.body.noOfCells,
-        req.body.noOfTemperatureSensors,
-        req.body.currentCapacity,
-        req.body.series,
-        req.body.imu,
-        req.body.gsm,
-        req.body.gps,
-        req.body.bluetooth,
-        session
-      );
-      // update count for given series
-      await ICSeries.findOneAndUpdate(
-        { series: req.body.series },
-        { countTotal: count },
-        { session: session }
-      );
-      return {
-        status: 201,
-        data: {
-          message: "BMS IC created Successfully",
-        },
-      };
-    } else {
-      // if count for given ics is > 1
-      let bulkBmsdocs = [];
-      for (let i = 0; i < parseInt(req.body.icCount); i++) {
-        count = count + 1;
-        let serialNo = count;
-        let uniqueId = createGivenDigitString(
-          req.body.series +
-            createGivenDigitString(serialNo, "0", 15) +
-            createGivenDigitString(req.body.noOfTemperatureSensors, "X", 2) +
-            createGivenDigitString(req.body.noOfCells, "X", 2) +
-            createGivenDigitString(req.body.currentCapacity, "X", 2),
-          "_",
-          24
-        );
-        bulkBmsdocs.push({
-          insertOne: {
-            document: {
-              isMaster: req.body.isMaster,
-              bmsUniqueId: uniqueId,
-              bmsName:
-                BMS_pref +
-                createGivenDigitString(serialNo, "0", 15) +
-                series.series,
-              currentCapacity: req.body.currentCapacity,
-              series: req.body.series,
-              imu: req.body.imu,
-              gps: req.body.gps,
-              gsm: req.body.gsm,
-              bluetooth: req.body.bluetooth,
-            },
+      bulkBmsdocs.push({
+        insertOne: {
+          document: {
+            isMaster: req.body.isMaster,
+            bmsUniqueId: uniqueId,
+            bmsName:
+              BMS_pref +
+              createGivenDigitString(serialNo, "0", 15) +
+              series.series,
+            currentCapacity: req.body.currentCapacity,
+            series: req.body.series,
+            // imu: req.body.imu,
+            // gps: req.body.gps,
+            gsm: req.body.gsm,
+            bluetooth: req.body.bluetooth,
           },
-        });
-      }
-      //insert all documents
-      let insertedBmsDocs = await BmsIc.bulkWrite(bulkBmsdocs, {
-        session,
-      });
-      // console.log(insertedBmsDocs.insertedIds);
-      let bmsIcIds = Object.entries(insertedBmsDocs.insertedIds).map(
-        ([_, { _id }]) => _id
-      );
-      // console.log(bmsIcIds[0]._id._id);
-      // create temperature sensors and cells data record and then save there ids in these records
-      let bulkTempInsert = [];
-      let bulkCellsInsert = [];
-      for (let i = 0; i < bmsIcIds.length; i++) {
-        for (let j = 0; j < parseInt(req.body.noOfTemperatureSensors); j++) {
-          bulkTempInsert.push({
-            insertOne: { document: { bmsIc: bmsIcIds[i] } },
-          });
-        }
-        for (let k = 0; k < parseInt(req.body.noOfCells); k++) {
-          bulkCellsInsert.push({
-            insertOne: { document: { bmsIc: bmsIcIds[i] } },
-          });
-        }
-      }
-      let insertedTemps = await TemperatureSensor.bulkWrite(bulkTempInsert, {
-        session,
-      });
-      let insertedCells = await Cell.bulkWrite(bulkCellsInsert, {
-        session,
-      });
-      let insertedCellsIds = Object.entries(insertedCells.insertedIds).map(
-        ([_, { _id }]) => _id
-      );
-      let insertedtempsIds = Object.entries(insertedTemps.insertedIds).map(
-        ([_, { _id }]) => _id
-      );
-
-      // add all ids to back to cells array and temp sesnors array
-      let stepTemp = parseInt(req.body.noOfTemperatureSensors);
-      let stepCells = parseInt(req.body.noOfCells);
-      let updateBmsIcs = [];
-      for (
-        let i = 0, j = 0, k = 0;
-        i < bmsIcIds.length,
-          j < insertedCellsIds.length,
-          k < insertedtempsIds.length;
-        i++, j = j + stepCells, k = k + stepTemp
-      ) {
-        updateBmsIcs.push({
-          updateOne: {
-            filter: { _id: bmsIcIds[i] },
-            update: {
-              $set: {
-                cells: insertedCellsIds.slice(j, j + stepCells),
-                temperatureSensors: insertedtempsIds.slice(k, k + stepTemp),
-              },
-            },
-          },
-        });
-      }
-      // update count for given series
-      await BmsIc.bulkWrite(updateBmsIcs, {
-        session: session,
-      });
-
-      await ICSeries.findOneAndUpdate(
-        { series: req.body.series },
-        { countTotal: count },
-        { session: session }
-      );
-      return {
-        status: 201,
-        data: {
-          message: "BMS ICs created Successfully",
         },
-      };
+      });
     }
+    //insert all documents
+    let insertedBmsDocs = await BmsIc.bulkWrite(bulkBmsdocs, {
+      session,
+    });
+    // console.log(insertedBmsDocs.insertedIds);
+    let bmsIcIds = Object.entries(insertedBmsDocs.insertedIds).map(
+      ([_, { _id }]) => _id
+    );
+    // console.log(bmsIcIds[0]._id._id);
+    // create temperature sensors and cells data record and then save there ids in these records
+    let bulkTempInsert = [];
+    let bulkCellsInsert = [];
+    for (let i = 0; i < bmsIcIds.length; i++) {
+      for (let j = 0; j < parseInt(req.body.noOfTemperatureSensors); j++) {
+        bulkTempInsert.push({
+          insertOne: { document: { bmsIc: bmsIcIds[i] } },
+        });
+      }
+      for (let k = 0; k < parseInt(req.body.noOfCells); k++) {
+        bulkCellsInsert.push({
+          insertOne: { document: { bmsIc: bmsIcIds[i] } },
+        });
+      }
+    }
+    let insertedTemps = await TemperatureSensor.bulkWrite(bulkTempInsert, {
+      session,
+    });
+    let insertedCells = await Cell.bulkWrite(bulkCellsInsert, {
+      session,
+    });
+    let insertedCellsIds = Object.entries(insertedCells.insertedIds).map(
+      ([_, { _id }]) => _id
+    );
+    let insertedtempsIds = Object.entries(insertedTemps.insertedIds).map(
+      ([_, { _id }]) => _id
+    );
+
+    // add all ids to back to cells array and temp sesnors array
+    let stepTemp = parseInt(req.body.noOfTemperatureSensors);
+    let stepCells = parseInt(req.body.noOfCells);
+    let updateBmsIcs = [];
+    for (
+      let i = 0, j = 0, k = 0;
+      i < bmsIcIds.length,
+        j < insertedCellsIds.length,
+        k < insertedtempsIds.length;
+      i++, j = j + stepCells, k = k + stepTemp
+    ) {
+      updateBmsIcs.push({
+        updateOne: {
+          filter: { _id: bmsIcIds[i] },
+          update: {
+            $set: {
+              cells: insertedCellsIds.slice(j, j + stepCells),
+              temperatureSensors: insertedtempsIds.slice(k, k + stepTemp),
+            },
+          },
+        },
+      });
+    }
+    // update count for given series
+    await BmsIc.bulkWrite(updateBmsIcs, {
+      session: session,
+    });
+
+    await ICSeries.findOneAndUpdate(
+      { series: req.body.series },
+      { countTotal: count },
+      { session: session }
+    );
+    return {
+      status: 201,
+      data: {
+        message: "BMS ICs created Successfully",
+      },
+    };
+    // }
   };
   postData(req, res, next, body);
 };
@@ -387,11 +387,12 @@ const postCreateBmsIc = async (req, res, next) => {
 const getAllBMSIcs = async (req, res, next) => {
   const body = async (req, res, next, session) => {
     // get query parameter to check whether we want all master bms or not
-    let master;
-    const isMaster = req.query.isMaster;
-
     // get all bms ics depending of type of bmsIC
-    const bmsIcs = await BmsIc.find().limit(10);
+    const idRegex = new RegExp(`${req.query.uniqueId || ""}`, "i");
+    // console.log(idRegex);
+    const bmsIcs = await BmsIc.find({
+      bmsUniqueId: { $regex: idRegex },
+    }).limit(100);
     return {
       status: 200,
       data: {

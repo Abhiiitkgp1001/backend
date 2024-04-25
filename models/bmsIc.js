@@ -18,18 +18,22 @@ const BmsSchema = mongoose.Schema({
     required: true,
   },
   imu: {
-    type: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "ImuData",
-    },
-    default: null,
+    type: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "ImuData",
+      },
+    ],
+    default: [],
   },
   gps: {
-    type:  {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "GpsData",
-    },
-    default: null,
+    type: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "GpsData",
+      },
+    ],
+    default: [],
   },
   gsm: {
     type: Boolean,

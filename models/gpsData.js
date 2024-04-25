@@ -17,7 +17,7 @@ const GpsDataSchema = new mongoose.Schema({
   longitude: {
     type: Number,
     default: 0,
-  }
+  },
 });
 
 export default mongoose.model("GpsData", GpsDataSchema);
