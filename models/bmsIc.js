@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const BmsSchema = mongoose.Schema({
+const BmsSchema = new mongoose.Schema({
   bmsUniqueId: {
     type: String,
     required: true,
@@ -17,19 +17,25 @@ const BmsSchema = mongoose.Schema({
     type: String,
     required: true,
   },
-  imu: {
-    type: {
+  imuData: {
+    
       type: mongoose.Schema.Types.ObjectId,
       ref: "ImuData",
-    },
+
     default: null,
   },
-  gps: {
-    type:  {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "GpsData",
-    },
+  gpsData: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "GpsData",
     default: null,
+  },
+  imu: {
+    type: Boolean,
+    default: false,
+  },
+  gps: {
+    type: Boolean,
+    default: false,
   },
   gsm: {
     type: Boolean,

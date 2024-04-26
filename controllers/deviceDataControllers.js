@@ -3,7 +3,7 @@ import Trip from "../models/Trips.js";
 import BmsIc from "../models/bmsIc.js";
 import Cell from "../models/cells.js";
 import Device from "../models/device.js";
-import ICSeries from "../models/ic_series.js";
+import ICSeries from "../models/icSeries.js";
 import Location from "../models/location.js";
 import TemperatureSensor from "../models/temperatureSensors.js";
 import User from "../models/user.js";
@@ -231,45 +231,45 @@ const postCreateBmsIc = async (req, res, next) => {
     let series = await ICSeries.findOne({ series: req.body.series });
     let count = parseInt(series.countTotal);
     const BMS_pref = (req.body.isMaster ? "Master" : "Worker") + "BMS_";
-    if (req.body.icCount == 1) {
-      count = count + 1;
-      let serialNo = count;
-      let uniqueId = createGivenDigitString(
-        req.body.series +
-          createGivenDigitString(serialNo, "0", 15) +
-          createGivenDigitString(req.body.noOfTemperatureSensors, "X", 2) +
-          createGivenDigitString(req.body.noOfCells, "X", 2) +
-          createGivenDigitString(req.body.currentCapacity, "X", 2),
-        "_",
-        24
-      );
-      await initBmsIc(
-        uniqueId,
-        req.body.isMaster,
-        BMS_pref + createGivenDigitString(serialNo, "0", 15) + series.series,
-        req.body.noOfCells,
-        req.body.noOfTemperatureSensors,
-        req.body.currentCapacity,
-        req.body.series,
-        req.body.imu,
-        req.body.gsm,
-        req.body.gps,
-        req.body.bluetooth,
-        session
-      );
-      // update count for given series
-      await ICSeries.findOneAndUpdate(
-        { series: req.body.series },
-        { countTotal: count },
-        { session: session }
-      );
-      return {
-        status: 201,
-        data: {
-          message: "BMS IC created Successfully",
-        },
-      };
-    } else {
+    // if (req.body.icCount == 1) {
+    //   count = count + 1;
+    //   let serialNo = count;
+    //   let uniqueId = createGivenDigitString(
+    //     req.body.series +
+    //       createGivenDigitString(serialNo, "0", 15) +
+    //       createGivenDigitString(req.body.noOfTemperatureSensors, "X", 2) +
+    //       createGivenDigitString(req.body.noOfCells, "X", 2) +
+    //       createGivenDigitString(req.body.currentCapacity, "X", 2),
+    //     "_",
+    //     24
+    //   );
+    //   await initBmsIc(
+    //     uniqueId,
+    //     req.body.isMaster,
+    //     BMS_pref + createGivenDigitString(serialNo, "0", 15) + series.series,
+    //     req.body.noOfCells,
+    //     req.body.noOfTemperatureSensors,
+    //     req.body.currentCapacity,
+    //     req.body.series,
+    //     req.body.imu,
+    //     req.body.gsm,
+    //     req.body.gps,
+    //     req.body.bluetooth,
+    //     session
+    //   );
+    //   // update count for given series
+    //   await ICSeries.findOneAndUpdate(
+    //     { series: req.body.series },
+    //     { countTotal: count },
+    //     { session: session }
+    //   );
+    //   return {
+    //     status: 201,
+    //     data: {
+    //       message: "BMS IC created Successfully",
+    //     },
+    //   };
+    // } else {
       // if count for given ics is > 1
       let bulkBmsdocs = [];
       for (let i = 0; i < parseInt(req.body.icCount); i++) {
@@ -379,7 +379,7 @@ const postCreateBmsIc = async (req, res, next) => {
           message: "BMS ICs created Successfully",
         },
       };
-    }
+    // }
   };
   postData(req, res, next, body);
 };
@@ -389,9 +389,20 @@ const getAllBMSIcs = async (req, res, next) => {
     // get query parameter to check whether we want all master bms or not
     let master;
     const isMaster = req.query.isMaster;
-
+    const filterData = req.body['filters'];
+    console.log(filterData)
+    let filterObject ={}
+    for (let key of Object.keys(filterData)){
+      console.log(key);
+      if(filterData[key] instanceof Array){
+        filterObject = {...filterObject, ...{ [key]: { $in: filterData[key]}}};
+      }else{
+        filterObject = {...filterObject, ...{[key]: filterData[key]}}
+      }
+    }
+    console.log(filterObject)
     // get all bms ics depending of type of bmsIC
-    const bmsIcs = await BmsIc.find().limit(10);
+    const bmsIcs = await BmsIc.find({...filterObject}).limit(10);
     return {
       status: 200,
       data: {
