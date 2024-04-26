@@ -231,46 +231,6 @@ const postCreateBmsIc = async (req, res, next) => {
     let series = await ICSeries.findOne({ series: req.body.series });
     let count = parseInt(series.countTotal);
     const BMS_pref = (req.body.isMaster ? "Master" : "Worker") + "BMS_";
-    // if (req.body.icCount == 1) {
-    //   count = count + 1;
-    //   let serialNo = count;
-    //   let uniqueId = createGivenDigitString(
-    //     req.body.series +
-    //       createGivenDigitString(serialNo, "0", 15) +
-    //       createGivenDigitString(req.body.noOfTemperatureSensors, "X", 2) +
-    //       createGivenDigitString(req.body.noOfCells, "X", 2) +
-    //       createGivenDigitString(req.body.currentCapacity, "X", 2),
-    //     "_",
-    //     24
-    //   );
-    //   await initBmsIc(
-    //     uniqueId,
-    //     req.body.isMaster,
-    //     BMS_pref + createGivenDigitString(serialNo, "0", 15) + series.series,
-    //     req.body.noOfCells,
-    //     req.body.noOfTemperatureSensors,
-    //     req.body.currentCapacity,
-    //     req.body.series,
-    //     req.body.imu,
-    //     req.body.gsm,
-    //     req.body.gps,
-    //     req.body.bluetooth,
-    //     session
-    //   );
-    //   // update count for given series
-    //   await ICSeries.findOneAndUpdate(
-    //     { series: req.body.series },
-    //     { countTotal: count },
-    //     { session: session }
-    //   );
-    //   return {
-    //     status: 201,
-    //     data: {
-    //       message: "BMS IC created Successfully",
-    //     },
-    //   };
-    // } else {
-    // if count for given ics is > 1
     let bulkBmsdocs = [];
     for (let i = 0; i < parseInt(req.body.icCount); i++) {
       count = count + 1;
@@ -295,8 +255,8 @@ const postCreateBmsIc = async (req, res, next) => {
               series.series,
             currentCapacity: req.body.currentCapacity,
             series: req.body.series,
-            // imu: req.body.imu,
-            // gps: req.body.gps,
+            imu: req.body.imu,
+            gps: req.body.gps,
             gsm: req.body.gsm,
             bluetooth: req.body.bluetooth,
           },
@@ -390,9 +350,32 @@ const getAllBMSIcs = async (req, res, next) => {
     // get all bms ics depending of type of bmsIC
     const idRegex = new RegExp(`${req.query.uniqueId || ""}`, "i");
     // console.log(idRegex);
-    const bmsIcs = await BmsIc.find({
-      bmsUniqueId: { $regex: idRegex },
-    }).limit(100);
+
+    // get filter from body.filter
+    console.log(req.query.filters);
+    const filterData = req.query.filters;
+    console.log(filterData);
+    console.log(idRegex);
+    let bmsIcs;
+    if (!filterData) {
+      bmsIcs = await BmsIc.find({
+        bmsUniqueId: { $regex: idRegex },
+      }).limit(100);
+    } else {
+      let filterObj = {};
+      for (let k of Object.keys(filterData)) {
+        if (filterData[k] instanceof Array) {
+          filterObj = { ...filterObj, ...{ [k]: { $in: filterData[k] } } };
+        } else {
+          filterObj = { ...filterObj, ...{ [k]: filterData[k] } };
+        }
+      }
+      bmsIcs = await BmsIc.find({
+        bmsUniqueId: { $regex: idRegex },
+        ...filterObj,
+      }).limit(100);
+    }
+
     return {
       status: 200,
       data: {

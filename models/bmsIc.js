@@ -17,7 +17,7 @@ const BmsSchema = mongoose.Schema({
     type: String,
     required: true,
   },
-  imu: {
+  imuData: {
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -26,7 +26,7 @@ const BmsSchema = mongoose.Schema({
     ],
     default: [],
   },
-  gps: {
+  gpsData: {
     type: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -34,6 +34,14 @@ const BmsSchema = mongoose.Schema({
       },
     ],
     default: [],
+  },
+  gps: {
+    type: Boolean,
+    default: false,
+  },
+  imu: {
+    type: Boolean,
+    default: false,
   },
   gsm: {
     type: Boolean,
