@@ -375,7 +375,6 @@ const getAllBMSIcs = async (req, res, next) => {
         ...filterObj,
       }).limit(100);
     }
-
     return {
       status: 200,
       data: {

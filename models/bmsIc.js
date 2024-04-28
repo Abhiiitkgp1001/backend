@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const BmsSchema = mongoose.Schema({
+const BmsSchema = new mongoose.Schema({
   bmsUniqueId: {
     type: String,
     required: true,
@@ -40,6 +40,14 @@ const BmsSchema = mongoose.Schema({
     default: false,
   },
   imu: {
+    type: Boolean,
+    default: false,
+  },
+  imu: {
+    type: Boolean,
+    default: false,
+  },
+  gps: {
     type: Boolean,
     default: false,
   },
