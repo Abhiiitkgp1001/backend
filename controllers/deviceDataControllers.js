@@ -1,5 +1,5 @@
-import BatteryPack from "../models/BatteryPack.js";
-import Trip from "../models/Trips.js";
+import BatteryPack from "../models/batteryPack.js";
+import Trip from "../models/trip.js";
 import BmsIc from "../models/bmsIc.js";
 import Cell from "../models/cells.js";
 import Device from "../models/device.js";
