@@ -2,10 +2,10 @@ import Redis from "redis";
 
 // Create a Redis client instance with your Redis Labs credentials
 const redisClient = Redis.createClient({
-  password: "QktSCoIEaWQbHQtrs6FnwAhTb606LikI",
+  password: "MPk7Fo2AvhfRUxGoVkUMT5FD8yyN0OMx",
   socket: {
-    host: "redis-14666.c280.us-central1-2.gce.cloud.redislabs.com",
-    port: 14666,
+    host: "redis-10974.c99.us-east-1-4.ec2.redns.redis-cloud.com",
+    port: 10974,
   },
 });
 

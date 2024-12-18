@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth.js";
 import dataRoutes from "./routes/deviceData.js";
 import manufacturerRoutes from "./routes/manufacturerRoute.js";
 import testRoutes from "./routes/test.js";
+import dataIngestion from "./routes/ingestion.js"
 import redisClient from "./utils/redisClient.js";
 
 //config
@@ -27,6 +28,7 @@ app.use("/admin", adminRoutes);
 app.use("/data", dataRoutes);
 app.use("/manufacturer", manufacturerRoutes);
 app.use("/test", testRoutes);
+app.use("/ingestion", dataIngestion)
 
 // app error handler middleware
 app.use((error, req, res, next) => {
@@ -44,9 +46,10 @@ try {
   app.listen(port, () => {
     console.log("db connection - " + mongoose.connection.readyState);
 
-    console.log("redis connection - " + redisConnection);
+    // console.log("redis connection - " + redisConnection);
     console.log(`Express app running on port ${port}!`);
+    
   });
-} catch (e) {
+} catch (err) {
   console.log(err);
 }
