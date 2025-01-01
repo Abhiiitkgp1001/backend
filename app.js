@@ -20,6 +20,8 @@ const dbUrl = process.env.MONGODB_URL;
 
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
+// Middleware to parse raw binary data
+app.use(bodyParser.raw({ type: 'application/octet-stream', limit: '10mb' }));
 app.use(bodyParser.json());
 
 //set routes
@@ -28,7 +30,7 @@ app.use("/admin", adminRoutes);
 app.use("/data", dataRoutes);
 app.use("/manufacturer", manufacturerRoutes);
 app.use("/test", testRoutes);
-app.use("/ingestion", dataIngestion)
+app.use("/api/ingestion", dataIngestion)
 
 // app error handler middleware
 app.use((error, req, res, next) => {
